@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Touchline Liga">
+  <rect width="512" height="512" fill="#0b1115"/>
+  <g fill="none" stroke="#ffffff" stroke-width="23" stroke-linecap="round">
+    <circle cx="256" cy="256" r="150"/>
+    <path d="M256 106v34M382 196l-32 12M334 366l-20-30M178 366l20-30M130 196l32 12"/>
+  </g>
+  <path d="M256 200l53 39-20 63h-66l-20-63z" fill="#e80040"/>
+</svg>

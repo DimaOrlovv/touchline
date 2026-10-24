@@ -1,0 +1,375 @@
+=== ARS-GK-1  (query: David Raya)
+    David Raya                  88  GK           Arsenal                      id=220901 s=6.0
+    De Gea                      83  GK           Fiorentina                   id=193080 s=3.0
+    David Raum                  83  LB           RB Leipzig                   id=236703 s=3.0
+    Dávid Hancko                83  CB           Atlético de Madrid           id=247103 s=3.0
+    David Neres                 81  LW           SSC Napoli                   id=236632 s=3.0
+=== ARS-LB-1  (query: Nuno Mendes)
+    Nuno Mendes                 89  LB           Paris SG                     id=252145 s=6.0
+    Nuno Tavares                76  LB           Latium                       id=251530 s=3.0
+    Nuno Santos                 75  LM           Sporting CP                  id=227890 s=3.0
+    Gonçalo Paciência           72  ST           Santa Clara                  id=216452 s=3.0
+    N'Golo Kanté                83  CDM          Fenerbahçe                   id=215914 s=2.0
+=== ARS-CB-1  (query: Gabriel Magalhaes)
+    Gabriel                     89  CB           Arsenal                      id=232580 s=6.0
+    Gabriel Pereira             75  CB           F.C. København               id=274187 s=6.0
+    Éder Militão                84  CB           Real Madrid                  id=240130 s=3.0
+    Gabriel Martinelli          80  LW           Arsenal                      id=251566 s=3.0
+    Gabri Veiga                 80  CM           FC Porto                     id=258729 s=3.0
+=== ARS-CB-2  (query: Dayot Upamecano)
+    Dayot Upamecano             87  CB           FC Bayern München            id=229558 s=6.0
+    Rúben Neves                 85  CDM          Al Hilal                     id=224293 s=2.0
+    Matheus Cunha               84  LM           Man Utd                      id=240243 s=2.0
+    Rafael Leão                 83  LW           Milano FC                    id=241721 s=2.0
+    Ibañez                      83  CB           Al Ahli                      id=247257 s=2.0
+=== ARS-RB-1  (query: Jurrien Timber)
+    Jurriën Timber              84  RB           Arsenal                      id=251805 s=6.0
+    Quinten Timber              79  CM           OM                           id=251806 s=3.0
+    Mauro Júnior                81  LB           PSV                          id=241509 s=2.0
+    Tim Kleindienst             80  ST           M'gladbach                   id=214096 s=2.0
+    Diego Moreira               79  RM           Milano FC                    id=270039 s=2.0
+=== ARS-CDM-1  (query: Declan Rice)
+    Declan Rice                 88  CDM          Arsenal                      id=234378 s=6.0
+    Vini Jr.                    89  LW           Real Madrid                  id=238794 s=2.0
+    Frenkie de Jong             86  CM           FC Barcelona                 id=228702 s=2.0
+    Kevin De Bruyne             85  CAM          SSC Napoli                   id=192985 s=2.0
+    Rodrygo                     84  LW           Real Madrid                  id=243812 s=2.0
+=== ARS-CM-1  (query: Jude Bellingham)
+    Jude Bellingham             90  CAM          Real Madrid                  id=252371 s=6.0
+    Nazinho                     72  LB           AS Monaco                    id=261531 s=4.0
+    Jobe Bellingham             77  CM           Borussia Dortmund            id=270964 s=3.0
+    Mauro Júnior                81  LB           PSV                          id=241509 s=2.0
+    Diego Moreira               79  RM           Milano FC                    id=270039 s=2.0
+=== ARS-CM-2  (query: Dominik Szoboszlai)
+    Dominik Szoboszlai          86  CAM          Liverpool                    id=236772 s=6.0
+    Dominik Greif               81  GK           OL                           id=263139 s=3.0
+    Dominik Livaković           78  GK           Fenerbahçe                   id=241671 s=3.0
+    Dominik Kohr                75  CB           1. FSV Mainz 05              id=212212 s=3.0
+    Dominik Schmid              75  LB           RB Salzburg                  id=239016 s=3.0
+=== ARS-LW-1  (query: Jeremy Doku)
+    Jérémy Doku                 84  LW           Manchester City              id=246420 s=6.0
+    Jérémy Jacquet              77  CB           Liverpool                    id=278903 s=3.0
+    Jeremy Toljan               74  RB           Levante UD                   id=214622 s=3.0
+    Jérémy Livolant             73  RW           Casa Pia AC                  id=231753 s=3.0
+    Jeremy Márquez              73  CM           CF Cruz Azul                 id=255111 s=3.0
+=== ARS-ST-1  (query: Erling Haaland)
+    Erling Haaland              91  ST           Manchester City              id=239085 s=6.0
+    Bernardo Silva              84  CM           Real Madrid                  id=218667 s=2.0
+    Gustavo Ferrareis           72  RB           Atlas FC                     id=226210 s=2.0
+    Caio Alexandre              72  CDM          Bahia                        id=258563 s=2.0
+=== ARS-RW-1  (query: Michael Olise)
+    Michael Olise               90  RM           FC Bayern München            id=247827 s=6.0
+    Michael Kayode              81  RB           Brentford                    id=277869 s=3.0
+    Michael Gregoritsch         76  ST           FC Augsburg                  id=199439 s=3.0
+    Michael Keane               76  CB           Everton                      id=207599 s=3.0
+    Michael Zetterer            75  GK           Frankfurt                    id=227370 s=3.0
+=== ARS-GK-2  (query: Gianluigi Donnarumma)
+    Gianluigi Donnarumma        89  GK           Manchester City              id=230621 s=6.0
+    João Pedro                  75  ST           Atltico de SL                id=199254 s=2.0
+    Deroy Duarte                74  CM           PFC Ludogorets               id=235355 s=2.0
+    Erick Marcus                73  RM           PFC Ludogorets               id=86437 s=2.0
+    Lee Gi Hyuk                 73  CB           Gangwon FC                   id=261128 s=2.0
+=== ARS-LB-2  (query: Riccardo Calafiori)
+    Riccardo Calafiori          82  LB           Arsenal                      id=257711 s=6.0
+    Riccardo Orsolini           82  RM           Bologna                      id=233556 s=3.0
+    Riccardo Sottil             74  LM           Fiorentina                   id=246431 s=3.0
+    Cristiano Ronaldo           84  ST           Al Nassr                     id=20801 s=2.0
+    William Gomes               77  RW           FC Porto                     id=77033 s=2.0
+=== ARS-CB-3  (query: Virgil van Dijk)
+    Virgil van Dijk             88  CB           Liverpool                    id=203376 s=9.0
+    Jan Paul van Hecke          81  CB           Spurs                        id=258908 s=3.0
+    Micky van de Ven            81  CB           Spurs                        id=264453 s=3.0
+    Sepp van den Berg           78  CB           Brentford                    id=242453 s=3.0
+    Bart van Rooij              76  RB           FC Twente                    id=262311 s=3.0
+=== ARS-CB-4  (query: Alessandro Bastoni)
+    Alessandro Bastoni          86  CB           Lombardia FC                 id=237383 s=6.0
+    Alessandro Buongiorno       81  CB           SSC Napoli                   id=243241 s=3.0
+    Alessandro Circati          74  CB           SL Benfica                   id=268913 s=3.0
+    Alessandro Zanoli           72  RB           Udinese                      id=268656 s=3.0
+    Alessandro Bianco           72  CM           Modena                       id=271477 s=3.0
+=== ARS-RB-2  (query: Jules Kounde)
+    Jules Koundé                85  RB           FC Barcelona                 id=241486 s=6.0
+    Mauro Júnior                81  LB           PSV                          id=241509 s=2.0
+    Diego Moreira               79  RM           Milano FC                    id=270039 s=2.0
+    Ko Itakura                  76  CB           M'gladbach                   id=233152 s=2.0
+    Nazinho                     72  LB           AS Monaco                    id=261531 s=2.0
+=== ARS-CDM-2  (query: Moises Caicedo)
+    Moisés Caicedo              86  CDM          Chelsea                      id=256079 s=6.0
+    Moi Gómez                   76  CM           CA Osasuna                   id=206590 s=3.0
+    Cristiano Ronaldo           84  ST           Al Nassr                     id=20801 s=2.0
+    Moise Kean                  82  ST           Fiorentina                   id=236610 s=2.0
+    William Gomes               77  RW           FC Porto                     id=77033 s=2.0
+=== ARS-CM-3  (query: Enzo Fernandez)
+    Enzo Fernández              86  CM           Chelsea                      id=247090 s=6.0
+    Nacho Fernández             81  CB           Al Qadsiah                   id=200724 s=3.0
+    Álvaro Carreras             81  LB           Real Madrid                  id=268889 s=3.0
+    Enzo Le Fée                 80  CAM          Sunderland                   id=246350 s=3.0
+    Enzo Boyomo                 79  CB           CA Osasuna                   id=259066 s=3.0
+=== ARS-CM-4  (query: Martin Odegaard)
+    Martin Ødegaard             86  CM           Arsenal                      id=222665 s=4.6
+    David Raya                  88  GK           Arsenal                      id=220901 s=3.0
+    Zubimendi                   84  CDM          Arsenal                      id=248148 s=3.0
+    Gavi                        83  CM           FC Barcelona                 id=264240 s=3.0
+    Gerard Martín               79  CB           FC Barcelona                 id=74462 s=3.0
+=== ARS-LW-2  (query: Bradley Barcola)
+    Bradley Barcola             85  LW           Paris SG                     id=264652 s=6.0
+    Tiago Tomás                 76  LM           VfB Stuttgart                id=257073 s=4.0
+    Nazinho                     72  LB           AS Monaco                    id=261531 s=4.0
+    Conor Bradley               79  RB           Liverpool                    id=264298 s=3.0
+    Bradley Locko               75  LB           Stade Brestois 29            id=263908 s=3.0
+=== ARS-ST-2  (query: Harry Kane)
+    Harry Kane                  90  ST           FC Bayern München            id=202126 s=6.0
+    Harry Maguire               82  CB           Man Utd                      id=203263 s=3.0
+    Harry Wilson                81  RW           Leeds United                 id=220710 s=3.0
+    Harry Milne                 74  LB           Hearts                       id=77043 s=3.0
+    Harry Souttar               72  CB           Leicester City               id=229901 s=3.0
+=== ARS-RW-2  (query: Antoine Semenyo)
+    Antoine Semenyo             85  RW           Manchester City              id=241236 s=6.0
+    Antoine Griezmann           84  ST           Orlando City                 id=194765 s=3.0
+    Antoine Mille               73  CM           ESTAC Troyes                 id=73085 s=3.0
+    Antoine Mendy               73  CB           OGC Nice                     id=272515 s=3.0
+    Antoine Bernede             72  CM           Hellas Verona                id=234795 s=3.0
+=== BAR-GK-1  (query: Joan Garcia)
+    Joan García                 86  GK           FC Barcelona                 id=259532 s=6.0
+    Grimaldo                    85  LM           Atlético de Madrid           id=210035 s=3.0
+    Eric García                 85  CB           FC Barcelona                 id=245037 s=3.0
+    Aleix García                84  CM           Leverkusen                   id=228813 s=3.0
+    Ferran Torres               84  ST           Paris SG                     id=241461 s=3.0
+=== BAR-LB-1  (query: Marc Cucurella)
+    Cucurella                   86  LB           Real Madrid                  id=239231 s=6.0
+    Marc Guéhi                  85  CB           Manchester City              id=241159 s=3.0
+    Marc-André ter Stegen       82  GK           Ajax                         id=192448 s=3.0
+    Pubill                      81  CB           Atlético de Madrid           id=266039 s=3.0
+    Bartra                      79  CB           Real Betis                   id=198141 s=3.0
+=== BAR-CB-1  (query: Pau Cubarsi)
+    Pau Cubarsí                 86  CB           FC Barcelona                 id=278046 s=6.0
+    Pau Torres                  81  CB           Aston Villa                  id=241464 s=3.0
+    Pau López                   77  GK           FC Andorra                   id=221087 s=3.0
+    Pau Víctor                  75  ST           SC Braga                     id=259070 s=3.0
+    Pau Navarro                 74  CB           Villarreal CF                id=278659 s=3.0
+=== BAR-CB-2  (query: William Saliba)
+    William Saliba              88  CB           Arsenal                      id=243715 s=6.0
+    William Gomes               77  RW           FC Porto                     id=77033 s=3.0
+    William Osula               75  ST           Newcastle Utd                id=270519 s=3.0
+    William Tesillo             74  CB           Atl. Nacional                id=214169 s=3.0
+    Gabriel                     89  CB           Arsenal                      id=232580 s=2.0
+=== BAR-RB-1  (query: Achraf Hakimi)
+    Achraf Hakimi               88  RB           Paris SG                     id=235212 s=6.0
+    Rafa                        80  CAM          SL Benfica                   id=216547 s=2.0
+    Guilherme                   75  LM           Houston Dynamo               id=234819 s=2.0
+    Félix Correia               75  LM           LOSC Lille                   id=253167 s=2.0
+    Gustavo Ferrareis           72  RB           Atlas FC                     id=226210 s=2.0
+=== BAR-CAM-1  (query: Fermin Lopez)
+    Fermín                      85  CAM          FC Barcelona                 id=277179 s=6.0
+    Fer López                   73  RW           Wolves                       id=75628 s=5.0
+    Pedri                       90  CM           FC Barcelona                 id=251854 s=3.0
+    Yeray                       80  CB           Athletic Club                id=227950 s=3.0
+    Toni Martínez               78  ST           D. Alavés                    id=234826 s=3.0
+=== BAR-CM-1  (query: Pedri)
+    Pedri                       90  CM           FC Barcelona                 id=251854 s=3.0
+    Pedrinho                    74  RM           Shakhtar Donetsk             id=255472 s=2.0
+=== BAR-CM-2  (query: Vitinha)
+    Vitinha                     90  CM           Paris SG                     id=255253 s=3.0
+    Vitinha                     75  ST           Genoa                        id=263829 s=3.0
+    Viti Rozada                 73  RB           UD Las Palmas                id=234350 s=2.0
+=== BAR-LW-1  (query: Khvicha Kvaratskhelia)
+    Khvicha Kvaratskhelia       89  LW           Paris SG                     id=247635 s=6.0
+=== BAR-ST-1  (query: Raphinha)
+    Raphinha                    88  LW           FC Barcelona                 id=233419 s=3.0
+=== BAR-RW-1  (query: Lamine Yamal)
+    Lamine Yamal                90  RW           FC Barcelona                 id=277643 s=6.0
+    Lamine Camara               80  CM           AS Monaco                    id=275138 s=3.0
+    Lamine Sy                   73  RB           AJ Auxerre                   id=268440 s=3.0
+    Chiquinho                   78  CM           Olympiacos FC                id=243686 s=2.0
+    Manu Sánchez                76  LB           Levante UD                   id=252327 s=2.0
+=== BAR-GK-2  (query: Lamens)
+    Chiquinho                   78  CM           Olympiacos FC                id=243686 s=2.0
+    Manu Sánchez                76  LB           Levante UD                   id=252327 s=2.0
+    Dela                        74  CB           Levante UD                   id=245290 s=2.0
+    Dinis Pinto                 73  RB           Moreirense FC                id=271451 s=2.0
+    Chris Ramos                 72  ST           R. Oviedo                    id=241973 s=2.0
+=== BAR-LB-2  (query: Lisandro Martinez)
+    Lisandro Martínez           82  CB           Man Utd                      id=239301 s=6.0
+    Lautaro Martínez            87  ST           Lombardia FC                 id=231478 s=3.0
+    Emiliano Martínez           85  GK           Aston Villa                  id=202811 s=3.0
+    Nico Paz                    84  CAM          Como                         id=277846 s=3.0
+    Iñigo Martínez              83  CB           Al Nassr                     id=204525 s=3.0
+=== BAR-CB-3  (query: Nico Schlotterbeck)
+    Nico Schlotterbeck          87  CB           Borussia Dortmund            id=247819 s=6.0
+    Nico Williams               84  LW           Athletic Club                id=256516 s=3.0
+    Nico Paz                    84  CAM          Como                         id=277846 s=3.0
+    Nico O'Reilly               83  LB           Manchester City              id=277427 s=3.0
+    Nico González               81  CDM          Manchester City              id=255069 s=3.0
+=== BAR-CB-4  (query: Eric Garcia)
+    Eric García                 85  CB           FC Barcelona                 id=245037 s=6.0
+    Joan García                 86  GK           FC Barcelona                 id=259532 s=3.0
+    Grimaldo                    85  LM           Atlético de Madrid           id=210035 s=3.0
+    Aleix García                84  CM           Leverkusen                   id=228813 s=3.0
+    Ferran Torres               84  ST           Paris SG                     id=241461 s=3.0
+=== BAR-RB-2  (query: Federico Valverde)
+    Federico Valverde           87  CM           Real Madrid                  id=239053 s=6.0
+    Federico Dimarco            86  LB           Lombardia FC                 id=226268 s=3.0
+    Federico Chiesa             80  RM           Liverpool                    id=235805 s=3.0
+    Federico Gatti              79  CB           Juventus                     id=266872 s=3.0
+    Federico Fattori            77  CDM          Talleres                     id=226671 s=3.0
+=== BAR-CAM-2  (query: Nico Paz)
+    Nico Paz                    84  CAM          Como                         id=277846 s=6.0
+    Nico Schlotterbeck          87  CB           Borussia Dortmund            id=247819 s=3.0
+    Nico Williams               84  LW           Athletic Club                id=256516 s=3.0
+    Nico O'Reilly               83  LB           Manchester City              id=277427 s=3.0
+    Nico González               81  CDM          Manchester City              id=255069 s=3.0
+=== BAR-CM-3  (query: Florian Wirtz)
+    Florian Wirtz               86  CAM          Liverpool                    id=256630 s=6.0
+    Florian Thauvin             82  RW           RC Lens                      id=204970 s=3.0
+    Florian Lejeune             79  CB           Rayo Vallecano               id=197948 s=3.0
+    Florian Grillitsch          77  CM           Frosinone                    id=228336 s=3.0
+    Florian Sotoca              74  ST           RC Lens                      id=227232 s=3.0
+=== BAR-CM-4  (query: Joao Neves)
+    João Neves                  88  CM           Paris SG                     id=272834 s=6.0
+    Jota                        76  LW           Celtic                       id=234570 s=6.0
+    João Virgínia               72  GK           Sporting CP                  id=237704 s=6.0
+    João Mário                  74  LM           Beşiktaş                     id=212814 s=5.0
+    Rúben Neves                 85  CDM          Al Hilal                     id=224293 s=3.0
+=== BAR-LW-2  (query: Matheus Cunha)
+    Matheus Cunha               84  LM           Man Utd                      id=240243 s=6.0
+    Matheus Nunes               83  RB           Manchester City              id=253124 s=3.0
+    Antony                      81  RW           Real Betis                   id=255475 s=3.0
+    Bento                       80  GK           Al Nassr                     id=73562 s=3.0
+    Lucas Da Cunha              78  CDM          Como                         id=254579 s=3.0
+=== BAR-ST-2  (query: Mikel Oyarzabal)
+    Oyarzabal                   84  ST           Real Sociedad                id=230142 s=6.0
+    Mikel Merino                83  CM           Arsenal                      id=225193 s=3.0
+    Jauregizar                  79  CM           Athletic Club                id=279604 s=3.0
+    Jon Mikel Aramburu          77  RB           Real Sociedad                id=259848 s=3.0
+    Mikel Amondarain            73  CM           Bologna                      id=74813 s=3.0
+=== BAR-RW-2  (query: Luis Diaz)
+    Luis Díaz                   88  LM           FC Bayern München            id=241084 s=6.0
+    Danilo Pereira              82  CB           Al Ittihad                   id=200888 s=3.0
+    Luis Javier Suárez          82  ST           Sporting CP                  id=245158 s=3.0
+    Brahim                      81  RM           Real Madrid                  id=231410 s=3.0
+    Luis Milla                  81  CM           Como                         id=242201 s=3.0
+=== REA-GK-1  (query: Thibaut Courtois)
+    Thibaut Courtois            90  GK           Real Madrid                  id=192119 s=6.0
+    Cristiano Ronaldo           84  ST           Al Nassr                     id=20801 s=2.0
+    William Gomes               77  RW           FC Porto                     id=77033 s=2.0
+=== REA-LB-1  (query: Joao Cancelo)
+    João Cancelo                83  LB           FC Barcelona                 id=210514 s=6.0
+    João Neves                  88  CM           Paris SG                     id=272834 s=3.0
+    João Félix                  83  CAM          Al Nassr                     id=242444 s=3.0
+    João Pedro                  83  ST           Chelsea                      id=252042 s=3.0
+    Palhinha                    82  CDM          FC Bayern München            id=229391 s=3.0
+=== REA-CB-1  (query: Willian Pacho)
+    Willian Pacho               89  CB           Paris SG                     id=256196 s=6.0
+    Estêvão                     80  RM           Chelsea                      id=76687 s=3.0
+    Willian José                76  ST           Bahia                        id=195093 s=3.0
+    Willi Orbán                 83  CB           RB Leipzig                   id=204638 s=2.0
+    Will Hughes                 77  CDM          Crystal Palace               id=206516 s=2.0
+=== REA-CB-2  (query: Marquinhos)
+    Marquinhos                  87  CB           Paris SG                     id=207865 s=3.0
+    M'Bala Nzola                73  ST           Fiorentina                   id=240452 s=2.0
+    André Ferreira              72  GK           Moreirense FC                id=244020 s=2.0
+=== REA-RB-1  (query: Xavi Espart)
+    Xavi Simons                 81  CAM          Spurs                        id=245367 s=3.0
+    Bernardo Silva              84  CM           Real Madrid                  id=218667 s=2.0
+    Caio Alexandre              72  CDM          Bahia                        id=258563 s=2.0
+=== REA-CDM-1  (query: Rodri)
+    Rodri                       90  CDM          FC Barcelona                 id=231866 s=3.0
+    Rodrigo De Paul             83  CM           Inter Miami CF               id=212616 s=2.0
+    Álex Baena                  83  LM           Atlético de Madrid           id=257279 s=2.0
+    Rodrigo Zalazar             82  CAM          Sporting CP                  id=251377 s=2.0
+    Igor Thiago                 82  ST           Brentford                    id=275771 s=2.0
+=== REA-CM-1  (query: Bruno Fernandes)
+    Bruno Fernandes             89  CAM          Man Utd                      id=212198 s=6.0
+    Bruno Guimarães             86  CM           Arsenal                      id=247851 s=3.0
+    Mateus Fernandes            80  CM           Spurs                        id=270857 s=3.0
+    Daniel Heuer Fernandes      79  GK           Hamburger SV                 id=212197 s=3.0
+    Paulinho                    79  ST           Toluca FC                    id=216531 s=3.0
+=== REA-CM-2  (query: Jamal Musiala)
+    Jamal Musiala               87  CAM          FC Bayern München            id=256790 s=6.0
+    Mauro Júnior                81  LB           PSV                          id=241509 s=2.0
+    Diego Moreira               79  RM           Milano FC                    id=270039 s=2.0
+    M'Bala Nzola                73  ST           Fiorentina                   id=240452 s=2.0
+    André Ferreira              72  GK           Moreirense FC                id=244020 s=2.0
+=== REA-LW-1  (query: Desire Doue)
+    Désiré Doué                 86  RW           Paris SG                     id=271421 s=6.0
+    Deroy Duarte                74  CM           PFC Ludogorets               id=235355 s=4.0
+    Guéla Doué                  78  RB           Strasbourg                   id=275208 s=3.0
+    Vini Jr.                    89  LW           Real Madrid                  id=238794 s=2.0
+    Frenkie de Jong             86  CM           FC Barcelona                 id=228702 s=2.0
+=== REA-ST-1  (query: Kylian Mbappe)
+    Kylian Mbappé               91  ST           Real Madrid                  id=231747 s=6.0
+    Ethan Mbappé                74  RM           LOSC Lille                   id=278172 s=3.0
+    M'Bala Nzola                73  ST           Fiorentina                   id=240452 s=2.0
+    André Ferreira              72  GK           Moreirense FC                id=244020 s=2.0
+=== REA-RW-1  (query: Julian Alvarez)
+    Julián Alvarez              86  ST           Atlético de Madrid           id=246191 s=6.0
+    Julián Quiñones             84  ST           Al Qadsiah                   id=234579 s=3.0
+    Julian Brandt               82  CAM          Ajax                         id=212194 s=3.0
+    Julian Ryerson              82  RB           Borussia Dortmund            id=229891 s=3.0
+    Julian Chabot               81  CB           VfB Stuttgart                id=239340 s=3.0
+=== REA-GK-2  (query: Unai Simon)
+    Unai Simón                  85  GK           Athletic Club                id=230869 s=6.0
+    Moses Simon                 76  LM           Paris FC                     id=216820 s=3.0
+    Unai López                  76  CM           Rayo Vallecano               id=222390 s=3.0
+    Simon Adingra               76  LM           Sunderland                   id=260779 s=3.0
+    Unai Núñez                  75  CB           RCD Espanyol                 id=240900 s=3.0
+=== REA-LB-2  (query: Federico Dimarco)
+    Federico Dimarco            86  LB           Lombardia FC                 id=226268 s=6.0
+    Federico Di Francesco       72  LM           Catanzaro                    id=213814 s=5.0
+    Federico Valverde           87  CM           Real Madrid                  id=239053 s=3.0
+    Federico Chiesa             80  RM           Liverpool                    id=235805 s=3.0
+    Federico Gatti              79  CB           Juventus                     id=266872 s=3.0
+=== REA-CB-3  (query: Ruben Dias)
+    Rúben Dias                  87  CB           Manchester City              id=239818 s=6.0
+    Raphinha                    88  LW           FC Barcelona                 id=233419 s=3.0
+    Rúben Neves                 85  CDM          Al Hilal                     id=224293 s=3.0
+    Ruben Loftus-Cheek          79  CAM          Milano FC                    id=213666 s=3.0
+    Paulinho                    79  ST           Toluca FC                    id=216531 s=3.0
+=== REA-CB-4  (query: Josko Gvardiol)
+    Joško Gvardiol              85  CB           Manchester City              id=251517 s=6.0
+    Mauro Júnior                81  LB           PSV                          id=241509 s=2.0
+    Diego Moreira               79  RM           Milano FC                    id=270039 s=2.0
+    João Pedro                  75  ST           Atltico de SL                id=199254 s=2.0
+    Jo Hyeon Woo                72  GK           Ulsan HD FC                  id=212432 s=2.0
+=== REA-RB-2  (query: Trent Alexander-Arnold)
+    Trent Alexander-Arnold      84  RB           Real Madrid                  id=231281 s=9.0
+    Rafa                        80  CAM          SL Benfica                   id=216547 s=4.0
+    Guilherme                   75  LM           Houston Dynamo               id=234819 s=4.0
+    Félix Correia               75  LM           LOSC Lille                   id=253167 s=4.0
+    Alexander Isak              86  ST           Liverpool                    id=233731 s=3.0
+=== REA-CDM-2  (query: Cole Palmer)
+    Cole Palmer                 85  CAM          Chelsea                      id=257534 s=6.0
+    Erik Palmer-Brown           72  CB           Panathinaikos                id=219461 s=3.0
+    Cole Bassett                72  CDM          Portland Timbers             id=245341 s=3.0
+    Cristiano Ronaldo           84  ST           Al Nassr                     id=20801 s=2.0
+    William Gomes               77  RW           FC Porto                     id=77033 s=2.0
+=== REA-CM-3  (query: Dani Olmo)
+    Dani Olmo                   84  CAM          FC Barcelona                 id=244260 s=6.0
+    Dani Cárdenas               74  GK           Rayo Vallecano               id=236033 s=3.0
+    Dani de Wit                 74  CM           FC Utrecht                   id=239361 s=3.0
+    Dani Raba                   74  RW           Valencia CF                  id=241463 s=3.0
+    Dani Rodríguez              72  LM           CD Leganés                   id=198451 s=3.0
+=== REA-CM-4  (query: Rayan Cherki)
+    Rayan Cherki                86  RW           Manchester City              id=251570 s=6.0
+    Rayan Aït-Nouri             81  LB           Manchester City              id=242641 s=3.0
+    Rayan                       79  RM           AFC Bournemouth              id=83494 s=3.0
+    Rayan Fofana                73  ST           RC Lens                      id=77633 s=3.0
+    Rayan Philippe              72  ST           Hamburger SV                 id=251961 s=3.0
+=== REA-LW-2  (query: Anthony Gordon)
+    Anthony Gordon              82  LW           FC Barcelona                 id=242964 s=6.0
+    Anthony Elanga              79  RW           Newcastle Utd                id=257470 s=3.0
+    Anthony Moris               77  GK           Al Khaleej                   id=184167 s=3.0
+    Anthony Caci                77  RB           1. FSV Mainz 05              id=236636 s=3.0
+    Jaidon Anthony              76  LM           Brentford                    id=243669 s=3.0
+=== REA-ST-2  (query: Victor Osimhen)
+    Victor Osimhen              85  ST           Galatasaray                  id=232293 s=6.0
+    Victor Froholdt             82  CM           FC Porto                     id=279015 s=3.0
+    Víctor Muñoz                79  LM           Liverpool                    id=76042 s=3.0
+    Víctor Gómez                78  RB           SC Braga                     id=245597 s=3.0
+    João Gomes                  78  CDM          Aston Villa                  id=273463 s=3.0
+=== REA-RW-2  (query: Nico Williams)
+    Nico Williams               84  LW           Athletic Club                id=256516 s=6.0
+    Nico Schlotterbeck          87  CB           Borussia Dortmund            id=247819 s=3.0
+    Nico Paz                    84  CAM          Como                         id=277846 s=3.0
+    Nico O'Reilly               83  LB           Manchester City              id=277427 s=3.0
+    Nico González               81  CDM          Manchester City              id=255069 s=3.0
