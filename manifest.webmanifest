@@ -1,0 +1,23 @@
+{
+  "name": "Touchline Liga",
+  "short_name": "Touchline",
+  "description": "Текстовая трансляция матчей трёх клубов: 30 туров, тренерские замены, детальные рейтинги игроков.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#e80040",
+  "lang": "ru",
+  "icons": [
+    { "src": "icons/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Таблица", "short_name": "Таблица", "url": "./#/table" },
+    { "name": "Состав", "short_name": "Состав", "url": "./#/squad" },
+    { "name": "Ближайший матч", "short_name": "Матч", "url": "./#/live" }
+  ]
+}
