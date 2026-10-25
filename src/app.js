@@ -1,5 +1,5 @@
 import { api, settings } from './state/api.js';
-import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, crest } from './ui/screens.js';
+import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, styleSheet, crest } from './ui/screens.js';
 import { LiveView } from './ui/live.js';
 import { icon } from './ui/icons.js';
 import { esc, sheet } from './ui/dom.js';
@@ -52,7 +52,8 @@ function connect() {
       for (const fn of ctx.listeners.live) fn(l);
       if (!l && route === 'live') setTimeout(() => go('home'), 1200);
       const plays = l && ctx.account && (l.home === ctx.account || l.away === ctx.account);
-      if (plays && l.status === 'running' && prev !== 'running' && route !== 'live') openLive();
+      const inProgress = ['running', 'halftime'].includes(l?.status);
+      if (plays && inProgress && !['running', 'halftime'].includes(prev) && route !== 'live') openLive();
       if (route === 'live') live?.syncFrom(l);
       refresh();
     },
@@ -403,6 +404,17 @@ const actions = {
   },
   match: (t) => openSheet(matchSheet(ctx, Number(t.dataset.idx))),
   player: (t) => openSheet(playerSheet(ctx, t.dataset.id)),
+  styles: () => openSheet(styleSheet(ctx)),
+  async style(t) {
+    const id = t.dataset.id;
+    try {
+      await api.setStyle(id);
+      if (ctx.S) ctx.S.styles = { ...ctx.S.styles, [ctx.account]: id };
+      closeSheet();
+      refresh();
+      toast(`Стиль: ${t.querySelector('b')?.textContent || id}`);
+    } catch (err) { toast(err.message); }
+  },
   club: (t) => { ctx.clubKey = t.dataset.key; ctx.draftSlots = ctx.S.lineups[t.dataset.key]?.slots?.map((s) => ({ ...s })) || null; ctx.dirty = false; go('squad'); refresh(); },
   async 'save-xi'() {
     if (!ctx.dirty) return;

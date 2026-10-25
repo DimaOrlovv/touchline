@@ -1,6 +1,8 @@
 import { esc, bar, ratingChip, sheet } from './dom.js';
 import { icon } from './icons.js';
 import { spinner } from './feedback.js';
+import { STYLES, applyStyle, styleOf } from '../engine/styles.js';
+import { coachOf } from '../engine/coach.js';
 
 export const LOGOS = {
   arsenal: 'icons/logos/arsenal.png',
@@ -18,6 +20,58 @@ export function crest(key, name, size = '') {
 
 const POS_ORDER = ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CM', 'LW', 'ST', 'RW'];
 const nameOf = (ctx, key) => ctx.S.teams.find((t) => t.key === key)?.name || key;
+
+// ---------- стиль игры ----------
+export function styleParams(styleId, teamKey) {
+  const style = styleOf(styleId);
+  const c = applyStyle(coachOf(teamKey), styleId);
+  return {
+    style, c,
+    rows: [
+      ['Прессинг', c.press], ['Контроль', c.control], ['Контратака', c.counter],
+      ['Темп', c.tempo], ['Агрессия', c.aggression], ['Линия', c.lineHeight],
+    ],
+  };
+}
+
+export function styleBars(rows, cls = 'sbars') {
+  return `<div class="${cls}">${rows.map(([label, v]) => {
+    const pct = Math.round(Math.max(0, Math.min(1, v)) * 100);
+    return `<span class="sbar"><em>${esc(label)}</em><i><b style="width:${pct}%"></b></i></span>`;
+  }).join('')}</div>`;
+}
+
+export function styleSheet(ctx) {
+  const teamKey = ctx.account;
+  const cur = ctx.S.styles?.[teamKey] || 'balanced';
+  const body = `<div class="stylesheet">
+    <p class="hint">Стиль задаёт баланс прессинга, владения и темпа. Активные тактики дают силу, но сжигают ноги — выбирайте до матча или в перерыве.</p>
+    <div class="stylelist">${STYLES.map((s) => {
+      const { rows } = styleParams(s.id, teamKey);
+      const lvl = Math.round(s.level * 100);
+      return `<button class="styleopt ${s.id === cur ? 'is-on' : ''}" data-act="style" data-id="${s.id}">
+        <div class="styleopt__head"><b>${esc(s.name)}</b><span class="styleopt__tag">${esc(s.tag)}</span></div>
+        <p>${esc(s.desc)}</p>
+        ${styleBars(rows)}
+        <div class="styleopt__foot"><span>Усталость ×${s.fatigue.toFixed(2)}</span><span>Уровень ${lvl >= 0 ? '+' : ''}${lvl}%</span></div>
+      </button>`;
+    }).join('')}</div>
+  </div>`;
+  return sheet('Стиль игры', body);
+}
+
+function styleCard(ctx) {
+  const id = ctx.S.styles?.[ctx.account] || 'balanced';
+  const { style, rows } = styleParams(id, ctx.account);
+  const l = ctx.S.live;
+  const locked = l && l.status === 'running' && (l.home === ctx.account || l.away === ctx.account);
+  return `<section class="card">
+    <header class="card__head"><h2>Стиль игры</h2>
+      ${locked ? '<span class="tag">смена — в перерыве</span>'
+        : `<button class="link" data-act="styles">Изменить ${icon('chevron', '', 14)}</button>`}</header>
+    <div class="stylecur"><b>${esc(style.name)}</b><p>${esc(style.desc)}</p>${styleBars(rows)}</div>
+  </section>`;
+}
 
 // ---------- вход ----------
 export function renderLogin(ctx) {
@@ -49,7 +103,7 @@ export function renderHome(ctx) {
   const live = S.live;
   const mine = S.table.find((r) => r.key === account);
   const inMatch = rd && (rd.home === account || rd.away === account);
-  const running = live && live.status === 'running';
+  const running = live && (live.status === 'running' || live.status === 'halftime');
   const iAmReady = live && inMatch && live.ready?.[account];
 
   let actions;
@@ -72,6 +126,8 @@ export function renderHome(ctx) {
         </button>` : '<p class="pad muted">Все туры сыграны.</p>'}
         ${actions}
       </section>
+
+      ${styleCard(ctx)}
 
       <section class="card">
         <header class="card__head"><h2>Таблица</h2><button class="link" data-act="go" data-route="table">Открыть ${icon('chevron', '', 14)}</button></header>

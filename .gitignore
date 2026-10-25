@@ -1,0 +1,5 @@
+node_modules/
+data/league.json
+data/league*.json
+*.log
+.DS_Store

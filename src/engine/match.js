@@ -1,5 +1,6 @@
 import { Rng, clamp, fmtClock } from './util.js';
 import { coachOf, matchMood, nextSubstitution, groupOf } from './coach.js';
+import { applyStyle } from './styles.js';
 import { line, CARD_REASONS, RED_REASONS } from './text.js';
 
 const LOAD = { GK: 0.10, CB: 0.46, LB: 0.64, RB: 0.64, CDM: 0.56, CM: 0.60, CAM: 0.56, LW: 0.68, RW: 0.68, ST: 0.52 };
@@ -9,15 +10,16 @@ const ZONE_NAME = ['вратарская', 'своя треть', 'центр п
 export const REAL_MS_PER_MATCH = 6 * 60 * 1000;
 
 export class MatchSim {
-  constructor({ homeKey, awayKey, squads, seed = 7, speed = 1 }) {
+  constructor({ homeKey, awayKey, squads, seed = 7, speed = 1, styles = {} }) {
     this.rng = new Rng(seed);
     this.seed = seed;
     this.speed = speed;
-    this.home = this.mkTeam(homeKey, squads[homeKey]);
-    this.away = this.mkTeam(awayKey, squads[awayKey]);
+    this.home = this.mkTeam(homeKey, squads[homeKey], styles[homeKey]);
+    this.away = this.mkTeam(awayKey, squads[awayKey], styles[awayKey]);
     this.minute = 0;
     this.half = 1;
-    this.extra = 0;
+    this.extra1 = 0;
+    this.extra2 = 0;
     this.finished = false;
     this.pending = [];
     this.events = [];
@@ -29,8 +31,8 @@ export class MatchSim {
     this.push('kickoff', null, { text: line(this.rng, 'kickoff', this.home.name), dur: 0.4 });
   }
 
-  mkTeam(key, data) {
-    const coach = coachOf(key);
+  mkTeam(key, data, styleId) {
+    const coach = applyStyle(coachOf(key), styleId);
     const rt = (p, onPitch) => ({
       ...p, onPitch, starts: onPitch, cameOn: false, used: false, fatigue: onPitch ? 0 : 6, out: false, replaced: false, sentOff: false,
       yellow: false, red: false, injuryLabel: null, mins: onPitch ? 0 : 0,
@@ -64,14 +66,19 @@ export class MatchSim {
   // ---- силы линий ----------------------------------------------------------
   lineAvg(t, group, attrs) {
     const ps = this.players(t.key).filter((p) => groupOf(p.pos) === group);
-    if (!ps.length) return 55;
-    return ps.reduce((s, p) => s + attrs.reduce((a, k) => a + this.eff(p, k), 0) / attrs.length, 0) / ps.length;
+    const mf = this.manFactor(t) * (1 + (t.coach.levelMod || 0));
+    if (!ps.length) return 55 * mf;
+    return ps.reduce((s, p) => s + attrs.reduce((a, k) => a + this.eff(p, k), 0) / attrs.length, 0) / ps.length * mf;
   }
   attack(t) { return this.lineAvg(t, 'att', ['attacking_finishing', 'pace', 'skill_dribbling', 'movement_acceleration']) * 0.6 + this.lineAvg(t, 'mid', ['mentality_vision', 'skill_long_passing']) * 0.4; }
   midfield(t) { return this.lineAvg(t, 'mid', ['attacking_short_passing', 'skill_ball_control', 'mentality_vision', 'power_stamina']); }
   defense(t) { return this.lineAvg(t, 'def', ['defending_awareness', 'defending_standing_tackle', 'power_strength', 'pace']) * 0.75 + this.lineAvg(t, 'mid', ['defending_awareness']) * 0.25; }
-  keeper(t) { const gk = this.players(t.key).find((p) => p.pos === 'GK') || t.xi[0]; return (this.eff(gk, 'goalkeeping_diving') + this.eff(gk, 'goalkeeping_reflexes') + this.eff(gk, 'goalkeeping_positioning')) / 3; }
-  manFactor(t) { const n = this.players(t.key).length; return n >= 11 ? 1 : clamp(0.80 + 0.02 * n, 0.8, 1); }
+  keeper(t) { const gk = this.players(t.key).find((p) => p.pos === 'GK') || this.players(t.key)[0] || t.xi[0]; return (this.eff(gk, 'goalkeeping_diving') + this.eff(gk, 'goalkeeping_reflexes') + this.eff(gk, 'goalkeeping_positioning')) / 3; }
+  // Каждый удалённый — реальная потеря в силе линий, а не только в составе.
+  manFactor(t) {
+    const n = this.players(t.key).length;
+    return n >= 11 ? 1 : clamp(1 - (11 - n) * 0.085, 0.62, 1);
+  }
 
   possessionShare(t) {
     const o = this.other(t);
@@ -85,16 +92,27 @@ export class MatchSim {
 
   // ---- часы и таймы --------------------------------------------------------
   checkClockMarks() {
-    if (this.half === 1 && this.minute >= 45) {
+    if (this.half === 1) {
+      // добавленное время первой половины решается молча
+      if (!this.extra1 && this.minute >= 45) this.extra1 = this.stoppage();
+      if (this.minute < 45 + this.extra1) return;
       this.half = 2;
-      this.extra = clamp(Math.round(this.home.fouls * 0.12 + this.away.fouls * 0.12 + (this.home.subsUsed + this.away.subsUsed) * 0.3), 1, 5);
-      this.push('ht', null, { text: `Перерыв. ${this.home.name} ${this.home.score} — ${this.away.score} ${this.away.name}. Добавлено ${this.extra} мин.`, dur: 0.1 });
+      this.minute = 45;
+      this.push('ht', null, {
+        text: `Перерыв. ${this.home.name} ${this.home.score} — ${this.away.score} ${this.away.name}.`,
+        dur: 0.1, score: [this.home.score, this.away.score],
+      });
       this.restHalfTime();
       this.ball = { team: this.away, zone: 1, side: 'C' };
       this.chain = [];
+      this.lastPasser = null;
+      this.counterBoost = 0;
+      this.halftimeSubs();
+      return;
     }
-    const limit = this.half === 2 ? 90 + this.extra : 90;
-    if (this.half === 2 && this.minute >= limit && !this.finished) {
+    if (this.finished) return;
+    if (!this.extra2 && this.minute >= 90) this.extra2 = this.stoppage();
+    if (this.minute >= 90 + this.extra2) {
       this.finished = true;
       this.push('ft', null, {
         text: `Финальный свисток. ${this.home.name} ${this.home.score} — ${this.away.score} ${this.away.name}.`,
@@ -103,10 +121,39 @@ export class MatchSim {
     }
   }
 
+  stoppage() {
+    const fouls = this.home.fouls + this.away.fouls;
+    const subs = this.home.subsUsed + this.away.subsUsed;
+    return clamp(Math.round(fouls * 0.09 + subs * 0.3 + this.rng.f(0, 1.4)), 1, this.half === 1 ? 4 : 6);
+  }
+
   restHalfTime() {
     for (const p of [...this.home.xi, ...this.away.xi, ...this.home.bench, ...this.away.bench]) {
       p.fatigue = Math.max(0, p.fatigue - 9);
     }
+  }
+
+  // Тренер сам решает, освежить ли кого-то в перерыве.
+  halftimeSubs() {
+    for (const t of [this.home, this.away]) {
+      if (t.subsUsed >= 5) continue;
+      const forced = t.xi.find((p) => p.out && !p.replaced);
+      const d = forced ? this.forcedSub(t, forced) : nextSubstitution(this, t.key, { halftime: true });
+      if (d) this.applySub(t, d);
+    }
+  }
+
+  setStyle(key, styleId) {
+    const t = this.teamRef(key);
+    const before = t.coach.styleId;
+    t.coach = applyStyle(coachOf(key), styleId);
+    if (before !== t.coach.styleId) {
+      this.push('style', t, {
+        text: `${t.name} меняет план: ${t.coach.styleName.toLowerCase()}.`,
+        dur: 0.4, style: t.coach.styleId, styleName: t.coach.styleName,
+      });
+    }
+    return t.coach;
   }
 
   drain(dt) {
@@ -117,7 +164,7 @@ export class MatchSim {
         const base = LOAD[p.pos] || 0.5;
         const stam = 1.32 - this.eff(p, 'power_stamina') / 155;
         const has = this.ball.team === t && p.onPitch;
-        const heat = (has ? 1.06 : 1) * (1 + t.coach.press * 0.16 * m.press / 0.82) * (0.9 + 0.25 * m.tempo);
+        const heat = (has ? 1.06 : 1) * (1 + t.coach.press * 0.16 * m.press / 0.82) * (0.9 + 0.25 * m.tempo) * (t.coach.fatigueMult || 1);
         p.fatigue = clamp(p.fatigue + base * stam * heat * dt * 1.12, 0, 100);
         p.mins += dt;
       }
@@ -329,7 +376,7 @@ export class MatchSim {
     const gk = this.players(t.key).find((p) => p.pos === 'GK');
     const choice = this.rng.weighted([
       ['short', 42 + t.coach.control * 40],
-      ['long', 11 + m.attack * 12 + (this.counterBoost ? 16 : 0)],
+      ['long', 11 + m.attack * 12 + (this.counterBoost ? 16 : 0) + (t.coach.directness || 0) * 24],
       ['carry', 16 + t.coach.tempo * 8],
     ]);
     if (choice === 'short') {
@@ -357,8 +404,8 @@ export class MatchSim {
   progress(t, o, m) {
     const choice = this.rng.weighted([
       ['pass', 30 + t.coach.control * 28],
-      ['switch', 14 + t.coach.control * 10],
-      ['through', 5 + m.attack * 7 + (this.counterBoost ? 12 : 0)],
+      ['switch', 14 + t.coach.control * 10 + (t.coach.width || 0) * 10],
+      ['through', 5 + m.attack * 7 + (this.counterBoost ? 12 : 0) + (t.coach.directness || 0) * 14],
       ['dribble', 12 + (1 - t.coach.control) * 18],
       ['carry', 16],
     ]);
@@ -375,7 +422,7 @@ export class MatchSim {
       const to = this.pickActor(t, 4, ['ST', 'LW', 'RW']);
       const d = this.oppDefender(t, 3, SIDE[to.pos]);
       const q = (this.eff(from, 'mentality_vision') + this.eff(from, 'skill_long_passing')) / 2;
-      const p = clamp(0.20 + (q - 74) / 130 - (this.eff(d, 'defending_awareness') - 74) / 160 - (this.eff(to, 'movement_acceleration') - 75) / 320, 0.05, 0.50);
+      const p = clamp(0.20 + (q - 74) / 130 - (this.eff(d, 'defending_awareness') - 74) / 160 - (this.eff(to, 'movement_acceleration') - 75) / 320 + (o.coach.lineHeight - 0.7) * 0.12, 0.05, 0.55);
       if (this.rng.chance(1 - p)) {
         from.keyPasses += 1;
         this.push('through', t, {
@@ -386,7 +433,7 @@ export class MatchSim {
         this.advance(0.35, t);
         this.ball = { team: t, zone: 4, side: SIDE[to.pos] === 'C' ? 'C' : SIDE[to.pos] };
         this.shot(t, to, { from: from, kind: 'through', xgBase: 0.16 });
-      } else if (this.rng.chance(0.35)) {
+      } else if (this.rng.chance(clamp(0.18 + o.coach.lineHeight * 0.34, 0.08, 0.6))) {
         this.push('offside', o, { text: line(this.rng, 'offside', to.name), dur: 0.3, player: to.name });
         o.offsides += 1;
         this.advance(0.3, o);
@@ -429,10 +476,10 @@ export class MatchSim {
   finalThird(t, o, m) {
     const choice = this.rng.weighted([
       ['dribble', 17 + (1 - t.coach.control) * 14],
-      ['cross', 14 + t.coach.tempo * 8],
+      ['cross', 14 + t.coach.tempo * 8 + (t.coach.width || 0) * 14],
       ['shot', 4 + m.attack * 6],
       ['pass', 22 + t.coach.control * 20],
-      ['through', 4 + m.attack * 5],
+      ['through', 4 + m.attack * 5 + (t.coach.directness || 0) * 8],
     ]);
     if (choice === 'dribble') {
       const p = this.pickActor(t, 3, ['LW', 'RW', 'LB', 'RB', 'ST', 'CAM']);
@@ -539,7 +586,7 @@ export class MatchSim {
 
   shot(t, p, { kind = 'inside', xgBase = 0.12, from = null } = {}) {
     const o = this.other(t);
-    const gk = this.players(o.key).find((x) => x.pos === 'GK') || o.xi[0];
+    const gk = this.players(o.key).find((x) => x.pos === 'GK') || this.players(o.key)[0];
     const finish = kind === 'header'
       ? (this.eff(p, 'attacking_heading_accuracy') || this.eff(p, 'power_jumping'))
       : kind === 'long' ? (this.eff(p, 'power_long_shots') + this.eff(p, 'attacking_finishing')) / 2
@@ -625,7 +672,7 @@ export class MatchSim {
       this.setPiece(victimTeam, inBox ? 'penalty' : 'freekick');
       return;
     }
-    const yellowP = clamp(0.06 + severity * 0.24 + (zone >= 3 ? 0.06 : 0.14) + (aggr - 60) / 280, 0.02, 0.5);
+    const yellowP = clamp(0.06 + severity * 0.24 + (zone >= 3 ? 0.06 : 0.14) + (aggr - 60) / 280 + ((claimer.coach?.aggression ?? 0.6) - 0.6) * 0.16, 0.02, 0.52);
     if (!d.yellow && this.rng.chance(yellowP)) this.card(d, claimer, this.rng.pick(CARD_REASONS), false);
     if (this.rng.chance(clamp(0.02 + severity * 0.07 + victim.fatigue / 900, 0.01, 0.14))) {
       this.injure(victim, victimTeam, severity);
@@ -682,7 +729,7 @@ export class MatchSim {
     }
     if (kind === 'penalty') {
       const shooter = this.pickActor(t, 4, ['ST', 'CAM', 'RW', 'LW', 'CM']);
-      const gk = this.players(o.key).find((x) => x.pos === 'GK') || o.xi[0];
+      const gk = this.players(o.key).find((x) => x.pos === 'GK') || this.players(o.key)[0];
       const pen = this.eff(shooter, 'mentality_penalties');
       const conv = clamp(0.72 + (pen - 75) / 180 - (this.eff(gk, 'goalkeeping_reflexes') - 78) / 260 - shooter.fatigue / 700, 0.35, 0.93);
       this.push('setpiece', t, { text: `Пенальти! ${shooter.name} устанавливает мяч на точку.`, dur: 0.6, kind, player: shooter.name });

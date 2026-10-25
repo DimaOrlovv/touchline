@@ -73,9 +73,10 @@ export function standings(league, squads) {
   return rows;
 }
 
-/** Травмы: пропуск следующих туров. */
-export function tickInjuries(league) {
+/** Травмы: пропуск следующих туров. Счётчик уменьшается только у команд, сыгравших тур. */
+export function tickInjuries(league, playedIds = null) {
   for (const id of Object.keys(league.injuries)) {
+    if (playedIds && !playedIds.has(id)) continue;
     league.injuries[id] -= 1;
     if (league.injuries[id] <= 0) delete league.injuries[id];
   }
@@ -122,6 +123,9 @@ const SCORER_RE = /ГОЛ!?\s+([A-ZА-ЯЁ][\w'’À-ÿ.\- ]{2,28}?)\s/i;
 
 export function applyResult(league, roundIdx, sim) {
   const rd = league.rounds[roundIdx];
+  // сначала списываем прошлые травмы, иначе новая травма «сгорает» в этом же туре
+  const playedIds = new Set([...sim.home.all, ...sim.away.all].map((p) => p.id));
+  tickInjuries(league, playedIds);
   rd.played = true;
   rd.hs = sim.home.score;
   rd.as = sim.away.score;
@@ -162,7 +166,6 @@ export function applyResult(league, roundIdx, sim) {
     .filter(([p]) => p.mins > 20)
     .sort((a, b) => ratingOf(b[0]) - ratingOf(a[0]))[0];
   rd.mvp = best ? { player: best[0].name, team: best[1], rating: ratingOf(best[0]) } : null;
-  tickInjuries(league);
   return rd;
 }
 

@@ -2,7 +2,8 @@ import { esc } from './dom.js';
 import { icon, EVENT_ICON } from './icons.js';
 import { crest } from './screens.js';
 import { spinner, toast } from './feedback.js';
-import { settings } from '../state/api.js';
+import { api, settings } from '../state/api.js';
+import { STYLES, styleOf } from '../engine/styles.js';
 import { rewriteEvents, FALLBACK_MODEL } from '../engine/llm.js';
 
 const AI_TYPES = ['goal', 'save', 'red', 'sub', 'injury', 'ht', 'ft', 'post'];
@@ -25,6 +26,8 @@ export class LiveView {
     this.aiQueue = [];
     this.aiBusy = false;
     this.aiOff = false;
+    this.breakTimer = null;
+    this.htKey = '';
   }
 
   mount(host) {
@@ -39,6 +42,12 @@ export class LiveView {
           <span class="score__clock" data-el="clock">00:00</span><span class="score__state" data-el="state"></span></div>
         <div class="score__side right"><b>${esc(this.name(live.away))}</b>${crest(live.away, this.name(live.away), 'crest--lg')}</div>
       </header>
+      <div class="styleline"><span data-el="style-home"></span><span data-el="style-away"></span></div>
+      <div class="htbox" data-el="ht" hidden>
+        <div class="htbox__head"><b>Перерыв</b><span data-el="htclock">30 с</span></div>
+        <p class="htbox__hint" data-el="hthint">Можно сменить стиль. Замены тренер сделает сам.</p>
+        <div class="htchips" data-el="htchips"></div>
+      </div>
       <div class="feedwrap">
         <div class="feed" data-el="feed"></div>
         <button class="newpill" data-el="pill" hidden>${icon('chevron', 'down', 14)}<span data-el="pilltext">Вниз</span></button>
@@ -49,6 +58,10 @@ export class LiveView {
     this.feedEl = this.el('feed');
     this.feedEl.addEventListener('scroll', () => this.onScroll(), { passive: true });
     this.el('pill').addEventListener('click', () => { this.stuck = true; this.scrollToEnd(); this.renderPill(); });
+    this.el('htchips').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-style]');
+      if (btn) this.changeStyle(btn.dataset.style, btn);
+    });
 
     for (const ev of live.events || []) this.addLine(ev, true);
     this.clock = live.events?.length ? live.events[live.events.length - 1].clock : '00:00';
@@ -96,11 +109,33 @@ export class LiveView {
     const wait = this.el('wait');
     if (!wait) return;
     const l = live || this.ctx.S.live;
-    if (!l) { wait.hidden = true; this.el('state').textContent = ''; return; }
+    if (!l) {
+      wait.hidden = true;
+      this.el('state').textContent = '';
+      this.el('ht').hidden = true;
+      this.stopBreakClock();
+      return;
+    }
     if (l.score) this.el('score').textContent = `${l.score[0]}:${l.score[1]}`;
+
+    const styles = l.styles || this.ctx.S.styles || {};
+    this.el('style-home').textContent = styles[l.home] ? `Стиль: ${styleOf(styles[l.home]).name}` : '';
+    this.el('style-away').textContent = styles[l.away] ? styleOf(styles[l.away]).name : '';
+
+    if (l.status === 'halftime') {
+      wait.hidden = true;
+      this.el('ht').hidden = false;
+      this.el('state').textContent = 'перерыв';
+      this.renderHalftime(l, styles);
+      this.startBreakClock(l);
+      return;
+    }
+    this.el('ht').hidden = true;
+    this.stopBreakClock();
+
     if (l.status === 'running') {
       wait.hidden = true;
-      this.el('state').textContent = parseInt(this.clock, 10) > 45 ? 'второй тайм' : 'первый тайм';
+      this.el('state').textContent = l.half === 2 ? 'второй тайм' : 'первый тайм';
       return;
     }
     if (l.status === 'done') {
@@ -114,6 +149,52 @@ export class LiveView {
     this.el('waittext').textContent = missing.length
       ? `Ждём: ${missing.map((k) => this.name(k)).join(', ')}`
       : 'Запускаем матч…';
+  }
+
+  renderHalftime(l, styles) {
+    const mine = this.ctx.account && (l.home === this.ctx.account || l.away === this.ctx.account);
+    const chips = this.el('htchips');
+    if (!chips) return;
+    if (!mine) {
+      chips.hidden = true;
+      chips.innerHTML = '';
+      this.el('hthint').textContent = 'Тренеры решают, менять ли стиль. Замены — на их усмотрение.';
+      this.htKey = '';
+      return;
+    }
+    chips.hidden = false;
+    this.el('hthint').textContent = 'Ваш ход: при желании смените стиль. Замены тренер сделает сам.';
+    const cur = styles[this.ctx.account] || this.ctx.S.styles?.[this.ctx.account];
+    const key = `${l.home}:${l.away}:${cur}`;
+    if (this.htKey === key) return;
+    this.htKey = key;
+    chips.innerHTML = STYLES.map((s) => `<button class="htchip ${s.id === cur ? 'is-on' : ''}" data-style="${s.id}">${esc(s.name)}</button>`).join('');
+  }
+
+  startBreakClock(l) {
+    if (!l.breakUntil) return;
+    this.stopBreakClock();
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((l.breakUntil - Date.now()) / 1000));
+      const node = this.el('htclock');
+      if (node) node.textContent = `${left} с`;
+      if (left <= 0) this.stopBreakClock();
+    };
+    tick();
+    this.breakTimer = setInterval(tick, 250);
+  }
+
+  stopBreakClock() {
+    if (this.breakTimer) clearInterval(this.breakTimer);
+    this.breakTimer = null;
+  }
+
+  async changeStyle(id, btn) {
+    try {
+      await api.setStyle(id);
+      this.el('htchips')?.querySelectorAll('.htchip').forEach((n) => n.classList.toggle('is-on', n === btn));
+      toast(`Стиль: ${styleOf(id).name}`);
+    } catch (err) { toast(err.message); }
   }
 
   addLine(ev, instant = false) {
@@ -177,5 +258,5 @@ export class LiveView {
     }
   }
 
-  destroy() { this.unsub?.(); this.unsubLive?.(); }
+  destroy() { this.stopBreakClock(); this.unsub?.(); this.unsubLive?.(); }
 }

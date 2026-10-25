@@ -49,5 +49,5 @@ export const EVENT_ICON = {
   tackle: 'tackle', intercept: 'intercept', press: 'press', clear: 'tackle',
   shot: 'shot', blocked: 'shield', save: 'save', post: 'post', goal: 'ball',
   foul: 'foul', setpiece: 'flag', corner: 'corner', offside: 'flag', gk: 'save',
-  yellow: 'card', red: 'card', injury: 'injury', sub: 'sub', moment: 'spark',
+  yellow: 'card', red: 'card', injury: 'injury', sub: 'sub', moment: 'spark', style: 'squad',
 };

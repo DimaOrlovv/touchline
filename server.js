@@ -3,14 +3,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { MatchSim } from './src/engine/match.js';
-import { newLeague, applyResult, effectiveSquad, standings, TEAMS_ORDER } from './src/engine/season.js';
+import { newLeague, applyResult, effectiveSquad, standings, isOut, TEAMS_ORDER } from './src/engine/season.js';
+import { DEFAULT_STYLES, styleOf } from './src/engine/styles.js';
 
 const PORT = Number(process.env.PORT || 8137);
 const ROOT = path.resolve('.');
-const DB_FILE = path.join(ROOT, 'data', 'league.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
+const DB_FILE = path.join(DATA_DIR, 'league.json');
 const SQUADS_FILE = path.join(ROOT, 'src', 'data', 'squads.json');
+const DB_VERSION = 2;
 
-const MATCH_MINUTES = 6;                       // реальная длительность матча
+// Облачное хранилище сезона на бесплатном Upstash Redis (REST).
+// Если переменные не заданы — работает локальный файл.
+const REDIS_URL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/+$/, '');
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const REDIS_KEY = process.env.DB_KEY || 'touchline:league';
+const remoteEnabled = !!(REDIS_URL && REDIS_TOKEN);
+
+const MATCH_MINUTES = Number(process.env.MATCH_MINUTES || 6);   // реальная длительность матча
+const HALFTIME_MS = Number(process.env.HALFTIME_SECONDS || 30) * 1000;
 const MS_PER_SIM_MIN = (MATCH_MINUTES * 60000) / 93;
 const LOGINS = { timars: 'arsenal', mirbar: 'barcelona', meirea: 'real_madrid' };
 
@@ -23,23 +34,124 @@ function blankLineups() {
   return out;
 }
 
-function load() {
-  try {
-    const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    if (raw?.league?.rounds?.length) return { league: raw.league, lineups: raw.lineups || blankLineups(), tokens: raw.tokens || {} };
-  } catch (e) { /* первый запуск */ }
-  return { league: newLeague(TEAMS_ORDER, 30, 20261024), lineups: blankLineups(), tokens: {} };
+function coerceDb(raw) {
+  if (raw?.version === DB_VERSION && raw?.league?.rounds?.length) {
+    return {
+      league: raw.league,
+      lineups: raw.lineups || blankLineups(),
+      tokens: raw.tokens || {},
+      styles: { ...DEFAULT_STYLES, ...(raw.styles || {}) },
+    };
+  }
+  return null;
 }
 
-const DB = load();
+async function remoteGet() {
+  if (!remoteEnabled) return null;
+  try {
+    const r = await fetch(`${REDIS_URL}/get/${encodeURIComponent(REDIS_KEY)}`, {
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) throw new Error(`redis ${r.status}`);
+    const j = await r.json();
+    return j?.result ? JSON.parse(j.result) : null;
+  } catch (e) {
+    console.error('не удалось прочитать облако:', e.message);
+    return null;
+  }
+}
+
+async function load() {
+  const fromCloud = coerceDb(await remoteGet());
+  if (fromCloud) {
+    console.log('сезон загружен из облака (Upstash)');
+    return fromCloud;
+  }
+  try {
+    const fromFile = coerceDb(JSON.parse(fs.readFileSync(DB_FILE, 'utf8')));
+    if (fromFile) {
+      console.log('сезон загружен из файла');
+      return fromFile;
+    }
+  } catch (e) { /* первый запуск или старая версия */ }
+  return {
+    league: newLeague(TEAMS_ORDER, 30, Date.now() % 100000),
+    lineups: blankLineups(),
+    tokens: {},
+    styles: { ...DEFAULT_STYLES },
+  };
+}
+
+const DB = await load();
 let saveTimer = null;
+let cloudTimer = null;
+let cloudBusy = false;
+let cloudDirty = false;
+
+function snapshot() {
+  return JSON.stringify({
+    version: DB_VERSION, updatedAt: new Date().toISOString(),
+    league: DB.league, lineups: DB.lineups, tokens: DB.tokens, styles: DB.styles,
+  });
+}
+
+function writeLocal() {
+  fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
+  fs.writeFileSync(DB_FILE, snapshot());
+}
+
+async function pushCloud() {
+  const r = await fetch(`${REDIS_URL}/set/${encodeURIComponent(REDIS_KEY)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'text/plain' },
+    body: snapshot(),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error(`redis ${r.status}`);
+}
+
+function scheduleCloud(delay = 500) {
+  if (!remoteEnabled) return;
+  cloudDirty = true;
+  if (cloudTimer || cloudBusy) return;
+  cloudTimer = setTimeout(async () => {
+    cloudTimer = null;
+    if (cloudBusy) return;
+    cloudDirty = false;
+    cloudBusy = true;
+    try {
+      await pushCloud();
+    } catch (e) {
+      cloudDirty = true;
+      console.error('не удалось сохранить в облако:', e.message);
+    } finally {
+      cloudBusy = false;
+      if (cloudDirty) scheduleCloud(3000);
+    }
+  }, delay);
+}
+
 function persist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
-    fs.writeFileSync(DB_FILE, JSON.stringify({ league: DB.league, lineups: DB.lineups, tokens: DB.tokens }));
-  }, 120);
+  saveTimer = setTimeout(() => { try { writeLocal(); } catch (e) { console.error(e.message); } }, 120);
+  scheduleCloud();
 }
+
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  clearTimeout(saveTimer);
+  clearTimeout(cloudTimer);
+  try { writeLocal(); } catch (e) { /* ignore */ }
+  if (remoteEnabled) {
+    try { await pushCloud(); } catch (e) { console.error('финальное сохранение не удалось:', e.message); }
+  }
+  process.exit(0);
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // ---- живое состояние матча -------------------------------------------------
 let live = null;
@@ -66,6 +178,12 @@ function squadFor(key) {
 function posOf(id, key) { return [...squadsByKey[key].starters, ...squadsByKey[key].bench].find((p) => p.id === id)?.pos; }
 function findPlayer(key, id) { return [...squadsByKey[key].starters, ...squadsByKey[key].bench].find((p) => p.id === id); }
 
+// Состав на матч: травмированные выпадают, их места занимают запасные.
+function matchSquad(key) {
+  const eff = effectiveSquad(DB.league, squadFor(key));
+  return { ...eff, bench: eff.bench.filter((p) => !isOut(DB.league, p.id) && !p.promoted) };
+}
+
 function publicState(teamKey) {
   const league = DB.league;
   const idx = nextRoundIdx();
@@ -79,6 +197,7 @@ function publicState(teamKey) {
     })),
     roundIdx: idx,
     lineups: DB.lineups,
+    styles: { ...DB.styles },
     squad: squadPayload(teamKey),
     squads: Object.fromEntries(SQUADS_ORDER_KEYS.map((k) => [k, squadPayload(k)])),
     injuries: league.injuries,
@@ -108,6 +227,11 @@ function liveView() {
     roundIdx: live.roundIdx, round: live.round, home: live.home, away: live.away,
     status: live.status, ready: live.ready, events: live.events,
     score: live.score, startedAt: live.startedAt, endedAt: live.endedAt,
+    breakUntil: live.breakUntil || null,
+    half: live.sim?.half || 1,
+    styles: live.sim
+      ? { [live.home]: live.sim.home.coach.styleId, [live.away]: live.sim.away.coach.styleId }
+      : { [live.home]: DB.styles[live.home], [live.away]: DB.styles[live.away] },
   };
 }
 
@@ -149,10 +273,11 @@ function markReady(teamKey, roundIdx) {
 function startMatch() {
   live.status = 'running';
   live.startedAt = Date.now();
-  const squads = Object.fromEntries(SQUADS_ORDER_KEYS.map((k) => [k, squadFor(k)]));
+  const squads = Object.fromEntries(SQUADS_ORDER_KEYS.map((k) => [k, matchSquad(k)]));
   live.sim = new MatchSim({
     homeKey: live.home, awayKey: live.away, squads,
     seed: (live.round * 7919 + DB.league.seed) % 100000,
+    styles: { [live.home]: DB.styles[live.home], [live.away]: DB.styles[live.away] },
   });
   broadcast('live', liveView());
   pump();
@@ -173,20 +298,39 @@ function pump() {
     id: ev.id, clock: ev.clock, type: ev.type, teamKey: ev.teamKey, text: ev.text,
     score: ev.score, scorer: ev.scorer, assist: ev.assist, player: ev.player,
     in: ev.in, out: ev.out, reason: ev.reason, serious: ev.serious,
+    style: ev.style, styleName: ev.styleName,
   };
   live.events.push(light);
   live.score = ev.score;
   broadcast('event', light);
+  if (ev.type === 'ht') {
+    live.status = 'halftime';
+    live.breakUntil = Date.now() + HALFTIME_MS;
+    clearTimeout(live.timer);
+    live.timer = setTimeout(resumeSecondHalf, HALFTIME_MS);
+    broadcast('live', liveView());
+    broadcastState();
+    return;
+  }
   let delay = Math.min(4200, Math.max(90, (ev.dur || 0.3) * MS_PER_SIM_MIN));
   if (ev.type === 'goal') delay += 1400;
-  if (ev.type === 'ht' || ev.type === 'ft' || ev.type === 'red') delay += 900;
+  if (ev.type === 'ft' || ev.type === 'red') delay += 900;
   live.timer = setTimeout(pump, delay);
+}
+
+function resumeSecondHalf() {
+  if (!live || live.status !== 'halftime') return;
+  live.status = 'running';
+  live.breakUntil = null;
+  broadcast('live', liveView());
+  pump();
 }
 
 function finishMatch(commit) {
   clearTimeout(live.timer);
   const sim = live.sim;
   live.status = 'done';
+  live.breakUntil = null;
   live.endedAt = Date.now();
   let summary = null;
   if (commit && sim && !DB.league.rounds[live.roundIdx].played) {
@@ -304,6 +448,21 @@ async function apiOnly(req, res, p, a) {
       persist();
       broadcastState();
       return send(res, 200, JSON.stringify({ ok: true }));
+    }
+
+    if (p === '/api/style' && req.method === 'POST') {
+      const { styleId } = await readBody(req);
+      if (styleOf(styleId).id !== styleId) return send(res, 400, JSON.stringify({ error: 'Неизвестный стиль' }));
+      const active = live && (live.home === team || live.away === team) ? live : null;
+      if (active && active.status === 'running') {
+        return send(res, 400, JSON.stringify({ error: 'Стиль меняется до матча или в перерыве' }));
+      }
+      DB.styles[team] = styleId;
+      persist();
+      if (active?.sim && active.status === 'halftime') active.sim.setStyle(team, styleId);
+      broadcast('live', liveView());
+      broadcastState();
+      return send(res, 200, JSON.stringify({ ok: true, styleId }));
     }
 
     if (p === '/api/reset' && req.method === 'POST') {

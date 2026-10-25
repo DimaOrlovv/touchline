@@ -1,4 +1,4 @@
-const VERSION = 'touchline-v17';
+const VERSION = 'touchline-v18';
 
 const SHELL = [
   './',
@@ -9,6 +9,7 @@ const SHELL = [
   './src/state/api.js',
   './src/engine/util.js',
   './src/engine/coach.js',
+  './src/engine/styles.js',
   './src/engine/text.js',
   './src/engine/match.js',
   './src/engine/season.js',

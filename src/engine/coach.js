@@ -77,9 +77,9 @@ const BENCH_PRIORITY = {
  * sim должен предоставить: minute, scoreOf(key), players(team), bench(team), eff(p,a), isOnBench,
  * subCount(team), canSub(team), staminaOk(p).
  */
-export function nextSubstitution(sim, teamKey) {
+export function nextSubstitution(sim, teamKey, { halftime = false } = {}) {
   const coach = coachOf(teamKey);
-    if (sim.subCount(teamKey) >= 5) return null;
+  if (sim.subCount(teamKey) >= 5) return null;
 
   const on = sim.players(teamKey);
   const minute = sim.minute;
@@ -92,8 +92,10 @@ export function nextSubstitution(sim, teamKey) {
     if (inP) return { out: broken, in: inP, forced: true, reason: broken.injuryLabel || 'вынужденная замена' };
   }
 
-  if (minute < 40) return null;
-  if (minute < coach.subWindow) return null;
+  if (!halftime) {
+    if (minute < 40) return null;
+    if (minute < coach.subWindow) return null;
+  }
 
   // 2. Игрок на карточке в обороне при высокой усталости — риск удалением.
   const atRisk = on.find((p) => p.yellow && groupOf(p.pos) === 'def' && p.fatigue > coach.fatigueLimit - 12);
@@ -103,8 +105,9 @@ export function nextSubstitution(sim, teamKey) {
   }
 
   // 3. Усталость: меняем того, кто просел сильнее всего по реальному уровню.
+  const tiredLimit = halftime ? 34 : coach.fatigueLimit;
   const tired = on
-    .filter((p) => p.pos !== 'GK' && p.fatigue >= coach.fatigueLimit)
+    .filter((p) => p.pos !== 'GK' && p.fatigue >= tiredLimit)
     .sort((a, b) => b.fatigue - a.fatigue);
   for (const p of tired) {
     const inP = pickBench(sim, teamKey, p);
