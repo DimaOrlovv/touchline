@@ -17,7 +17,7 @@ export const el = (tag, attrs = {}, kids = []) => {
   return node;
 };
 
-export const teamTone = (key) => ({ arsenal: 'ars', barcelona: 'fcb', real_madrid: 'rma' }[key] || 'ars');
+export const teamTone = (key) => ({ arsenal: 'psg', barcelona: 'fcb', real_madrid: 'rma' }[key] || 'psg');
 
 export function bar(value, { max = 100, tone = '' } = {}) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));

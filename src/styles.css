@@ -19,7 +19,7 @@
   --yellow-bg: rgba(255, 205, 0, .18);
   --red: #d30000;
   --red-bg: #fbe5e5;
-  --ars: #c8102e;
+  --psg: #004170;
   --fcb: #8a0029;
   --rma: #00529f;
   --tab-h: 60px;
@@ -136,7 +136,7 @@ button, input, select { font: inherit; color: inherit; }
 
 /* ---------- матч ---------- */
 .hero { border-top: 3px solid var(--line-strong); }
-.hero.ars-edge { border-top-color: var(--ars); }
+.hero.psg-edge { border-top-color: var(--psg); }
 .hero.fcb-edge { border-top-color: var(--fcb); }
 .hero.rma-edge { border-top-color: var(--rma); }
 .fx { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 16px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }

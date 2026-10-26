@@ -5,13 +5,13 @@ import { STYLES, applyStyle, styleOf } from '../engine/styles.js';
 import { coachOf } from '../engine/coach.js';
 
 export const LOGOS = {
-  arsenal: 'icons/logos/arsenal.png',
+  arsenal: 'icons/logos/psg.png',
   barcelona: 'icons/logos/barcelona.png',
   real_madrid: 'icons/logos/real_madrid.png',
 };
 
-const TONE = { arsenal: 'ars', barcelona: 'fcb', real_madrid: 'rma' };
-export const toneOf = (key) => TONE[key] || 'ars';
+const TONE = { arsenal: 'psg', barcelona: 'fcb', real_madrid: 'rma' };
+export const toneOf = (key) => TONE[key] || 'psg';
 
 export function crest(key, name, size = '') {
   const letter = (name || '?').slice(0, 1);
@@ -82,14 +82,14 @@ export function renderLogin(ctx) {
       <form class="login__form" data-act="submit-login" autocomplete="off">
         <div class="field">
           <label for="lg">Логин тренера</label>
-          <input id="lg" name="login" type="text" autocapitalize="none" spellcheck="false" placeholder="TimArs" required>
+          <input id="lg" name="login" type="text" autocapitalize="none" spellcheck="false" placeholder="ArlPsg" required>
         </div>
         <label class="switch switch--plain"><span>Запомнить меня</span><input type="checkbox" name="remember" ${ctx.remember ? 'checked' : ''}><i></i></label>
         <button class="btn btn--primary block" type="submit">${ctx.busy ? `${spinner(18)} Проверяю` : 'Войти'}</button>
         ${ctx.error ? `<p class="form-error">${esc(ctx.error)}</p>` : ''}
       </form>
       <div class="login__hint">
-        <span>Arsenal — Mikel Arteta</span><span>FC Barcelona — Pep Guardiola</span><span>Real Madrid — Hansi Flick</span>
+        <span>PSG — Luis Enrique</span><span>FC Barcelona — Pep Guardiola</span><span>Real Madrid — Hansi Flick</span>
       </div>
     </div>`,
   };

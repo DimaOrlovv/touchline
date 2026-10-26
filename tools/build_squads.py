@@ -7,7 +7,7 @@ rows = {r['player_id']: r for r in csv.DictReader(open('data/fc27_players.csv', 
 # (file label, player_id in EA FC 27 dataset, position from squads.txt, is captain)
 TEAMS = {
     'arsenal': {
-        'coach': 'Mikel Arteta', 'name': 'Arsenal',
+        'coach': 'Luis Enrique', 'name': 'PSG',
         'starter': [('D. Raya', '220901', 'GK', 0), ('N. Mendes', '252145', 'LB', 0), ('Gabriel', '232580', 'CB', 0),
                     ('Upamecano', '229558', 'CB', 0), ('Timber', '251805', 'RB', 0), ('D. Rice', '234378', 'CDM', 1),
                     ('J. Bellingham', '252371', 'CM', 0), ('Szoboszlai', '236772', 'CM', 0), ('J. Doku', '246420', 'LW', 0),

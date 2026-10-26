@@ -20,10 +20,10 @@ const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const REDIS_KEY = process.env.DB_KEY || 'touchline:league';
 const remoteEnabled = !!(REDIS_URL && REDIS_TOKEN);
 
-const MATCH_MINUTES = Number(process.env.MATCH_MINUTES || 6);   // реальная длительность матча
+const MATCH_MINUTES = Number(process.env.MATCH_MINUTES || 4);   // реальная длительность матча
 const HALFTIME_MS = Number(process.env.HALFTIME_SECONDS || 30) * 1000;
 const MS_PER_SIM_MIN = (MATCH_MINUTES * 60000) / 93;
-const LOGINS = { timars: 'arsenal', mirbar: 'barcelona', meirea: 'real_madrid' };
+const LOGINS = { arlpsg: 'arsenal', mirbar: 'barcelona', meirea: 'real_madrid' };
 
 const SQUADS = JSON.parse(fs.readFileSync(SQUADS_FILE, 'utf8'));
 const squadsByKey = Object.fromEntries(SQUADS.teams.map((t) => [t.key, t]));
@@ -505,5 +505,5 @@ function serveStatic(req, res, p) {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Touchline Liga: http://localhost:${PORT}`);
-  console.log('логины: TimArs / MirBar / MeiRea');
+  console.log('логины: ArlPsg / MirBar / MeiRea');
 });

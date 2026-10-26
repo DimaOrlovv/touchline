@@ -7,7 +7,7 @@ const LOAD = { GK: 0.10, CB: 0.46, LB: 0.64, RB: 0.64, CDM: 0.56, CM: 0.60, CAM:
 const SIDE = { GK: 'C', LB: 'L', CB: 'C', RB: 'R', CDM: 'C', CM: 'C', CAM: 'C', LW: 'L', RW: 'R', ST: 'C' };
 const ZONE_NAME = ['вратарская', 'своя треть', 'центр поля', 'чужая треть', 'штрафная'];
 
-export const REAL_MS_PER_MATCH = 6 * 60 * 1000;
+export const REAL_MS_PER_MATCH = 4 * 60 * 1000;
 
 export class MatchSim {
   constructor({ homeKey, awayKey, squads, seed = 7, speed = 1, styles = {} }) {
@@ -121,10 +121,14 @@ export class MatchSim {
     }
   }
 
+  // Добавленное время считается по событиям текущего тайма, а не по всему матчу.
   stoppage() {
-    const fouls = this.home.fouls + this.away.fouls;
-    const subs = this.home.subsUsed + this.away.subsUsed;
-    return clamp(Math.round(fouls * 0.09 + subs * 0.3 + this.rng.f(0, 1.4)), 1, this.half === 1 ? 4 : 6);
+    const ht = this.events.findLastIndex((e) => e.type === 'ht');
+    const current = this.events.slice(ht + 1);
+    const fouls = current.filter((e) => e.type === 'foul').length;
+    const subs = current.filter((e) => e.type === 'sub').length;
+    const add = 1.2 + this.rng.f(0, 2) + fouls * 0.05 + subs * 0.18;
+    return clamp(Math.round(add), 1, this.half === 1 ? 4 : 6);
   }
 
   restHalfTime() {

@@ -4,10 +4,10 @@ import { clamp } from './util.js';
 // Профиль задаёт только пропорции и привычки, а не сам набор принципов.
 export const COACHES = {
   arsenal: {
-    name: 'Mikel Arteta', team: 'Arsenal',
-    press: 0.82, control: 0.78, counter: 0.70, tempo: 0.76, aggression: 0.62, lineHeight: 0.72,
-    subWindow: 58, fatigueLimit: 54, secondWind: 6,
-    note: 'Прессинг после потери в течение шести секунд, фланги играют широко.',
+    name: 'Luis Enrique', team: 'PSG',
+    press: 0.84, control: 0.86, counter: 0.66, tempo: 0.78, aggression: 0.60, lineHeight: 0.78,
+    subWindow: 60, fatigueLimit: 53, secondWind: 6,
+    note: 'Владение с агрессивным давлением после потери, крайние защитники играют высоко.',
   },
   barcelona: {
     name: 'Pep Guardiola', team: 'FC Barcelona',

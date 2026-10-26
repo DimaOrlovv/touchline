@@ -1,4 +1,4 @@
-const VERSION = 'touchline-v18';
+const VERSION = 'touchline-v19';
 
 const SHELL = [
   './',
@@ -24,7 +24,7 @@ const SHELL = [
   './icons/app-icon-192.png',
   './icons/app-icon-512.png',
   './icons/app-icon-maskable-512.png',
-  './icons/logos/arsenal.png',
+  './icons/logos/psg.png',
   './icons/logos/barcelona.png',
   './icons/logos/real_madrid.png',
 ];

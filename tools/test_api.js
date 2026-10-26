@@ -11,7 +11,7 @@ const j = async (path, opts = {}, token) => {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const ok = (label, cond, extra = '') => console.log(`${cond ? 'OK  ' : 'FAIL'} ${label}${extra ? ' — ' + extra : ''}`);
 
-const a = await j('/api/login', { method: 'POST', body: { login: 'TimArs' } });
+const a = await j('/api/login', { method: 'POST', body: { login: 'ArlPsg' } });
 const b = await j('/api/login', { method: 'POST', body: { login: 'MirBar' } });
 const c = await j('/api/login', { method: 'POST', body: { login: 'MeiRea' } });
 ok('вход трёх тренеров', a.status === 200 && b.status === 200 && c.status === 200, `${a.data?.team}/${b.data?.team}/${c.data?.team}`);
