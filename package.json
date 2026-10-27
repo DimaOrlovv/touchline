@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Онлайн PWA: лига трёх клубов с текстовой трансляцией",
+  "description": "Онлайн PWA: лига 10 клубов с текстовой трансляцией и ботами",
   "scripts": {
     "dev": "node server.js",
     "sim": "node tools/smoke.js"

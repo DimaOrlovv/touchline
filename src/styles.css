@@ -22,6 +22,13 @@
   --psg: #004170;
   --fcb: #8a0029;
   --rma: #00529f;
+  --ars: #ef0107;
+  --mci: #6cabdd;
+  --bay: #dc052d;
+  --liv: #c8102e;
+  --che: #034694;
+  --atm: #cb3524;
+  --int: #0068a8;
   --tab-h: 60px;
   --pad: 12px;
   --radius-chip: 4px;
@@ -139,11 +146,19 @@ button, input, select { font: inherit; color: inherit; }
 .hero.psg-edge { border-top-color: var(--psg); }
 .hero.fcb-edge { border-top-color: var(--fcb); }
 .hero.rma-edge { border-top-color: var(--rma); }
+.hero.ars-edge { border-top-color: var(--ars); }
+.hero.mci-edge { border-top-color: var(--mci); }
+.hero.bay-edge { border-top-color: var(--bay); }
+.hero.liv-edge { border-top-color: var(--liv); }
+.hero.che-edge { border-top-color: var(--che); }
+.hero.atm-edge { border-top-color: var(--atm); }
+.hero.int-edge { border-top-color: var(--int); }
 .fx { width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 16px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
 .fx__side { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; min-width: 0; }
 .fx__side b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fx__side.right { justify-content: flex-end; }
-.fx__score { font-size: 21px; font-weight: 700; }
+.fx__score { font-size: 21px; font-weight: 700; text-align: center; }
+.fx__state { display: block; font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--ink-3); text-transform: uppercase; margin-top: 1px; }
 .live-dot { display: block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 .lastline { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 12px; font-size: 19px; font-weight: 700; }
@@ -195,8 +210,8 @@ button, input, select { font: inherit; color: inherit; }
 .badge { font-size: 10px; font-style: normal; padding: 2px 5px; border-radius: 2px; text-transform: uppercase; letter-spacing: .04em; }
 .badge--out { background: var(--red-bg); color: var(--red); }
 
-.clubchips { display: flex; gap: 6px; }
-.clubchip { flex: 1; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--bg); padding: 8px; font-size: 12.5px; font-weight: 600; border-radius: var(--radius-chip); cursor: pointer; min-width: 0; }
+.clubchips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; -webkit-overflow-scrolling: touch; }
+.clubchip { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--bg); padding: 8px; font-size: 12.5px; font-weight: 600; border-radius: var(--radius-chip); cursor: pointer; min-width: 118px; }
 .clubchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clubchip.is-on { border-color: var(--ink); background: var(--panel); }
 .clubchip .me { font-style: normal; font-size: 9.5px; color: var(--accent); text-transform: uppercase; letter-spacing: .04em; }
@@ -243,6 +258,7 @@ button, input, select { font: inherit; color: inherit; }
 .ev--ht .ev__min, .ev--ft .ev__min { color: var(--bg); }
 .ev.is-ai .ev__txt::after { content: "ИИ"; font-size: 9.5px; letter-spacing: .06em; color: var(--ink-3); border: 1px solid var(--line-strong); border-radius: 2px; padding: 0 3px; margin-left: 6px; vertical-align: 1px; }
 .live-wait { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 13.5px; color: var(--ink-2); flex: none; }
+.live-wait[hidden] { display: none; }
 .styleline { flex: none; display: flex; justify-content: space-between; gap: 10px; padding: 4px 12px 6px; border-bottom: 1px solid var(--line); font-size: 10px; letter-spacing: .03em; text-transform: uppercase; color: var(--ink-3); }
 .styleline span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .styleline span:last-child { text-align: right; }
@@ -313,6 +329,8 @@ button, input, select { font: inherit; color: inherit; }
 .ms__card.red i { background: var(--red); }
 .ms__card em { font-style: normal; color: var(--ink-3); font-size: 11.5px; }
 .upcoming { text-align: center; padding: 10px 0 4px; }
+.replayfeed { max-height: 58svh; overflow-y: auto; border: 1px solid var(--line); margin-top: 4px; -webkit-overflow-scrolling: touch; }
+.replayfeed .ev:last-child { border-bottom: 0; }
 .up__teams { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 15px; font-weight: 700; }
 
 /* ---------- игрок ---------- */

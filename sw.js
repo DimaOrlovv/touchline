@@ -1,4 +1,4 @@
-const VERSION = 'touchline-v19';
+const VERSION = 'touchline-v21';
 
 const SHELL = [
   './',
@@ -27,6 +27,13 @@ const SHELL = [
   './icons/logos/psg.png',
   './icons/logos/barcelona.png',
   './icons/logos/real_madrid.png',
+  './icons/logos/arsenal.png',
+  './icons/logos/manchester_city.png',
+  './icons/logos/bayern_munich.png',
+  './icons/logos/liverpool.png',
+  './icons/logos/chelsea.png',
+  './icons/logos/atletico_madrid.png',
+  './icons/logos/inter_milan.png',
 ];
 
 self.addEventListener('install', (e) => {

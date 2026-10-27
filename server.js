@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { MatchSim } from './src/engine/match.js';
-import { newLeague, applyResult, effectiveSquad, standings, isOut, TEAMS_ORDER } from './src/engine/season.js';
+import { newLeague, applyResult, effectiveSquad, standings, isUnavailable, TEAMS_ORDER, HUMAN_KEYS } from './src/engine/season.js';
 import { DEFAULT_STYLES, styleOf } from './src/engine/styles.js';
 
 const PORT = Number(process.env.PORT || 8137);
@@ -11,7 +11,7 @@ const ROOT = path.resolve('.');
 const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'league.json');
 const SQUADS_FILE = path.join(ROOT, 'src', 'data', 'squads.json');
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 // Облачное хранилище сезона на бесплатном Upstash Redis (REST).
 // Если переменные не заданы — работает локальный файл.
@@ -23,7 +23,7 @@ const remoteEnabled = !!(REDIS_URL && REDIS_TOKEN);
 const MATCH_MINUTES = Number(process.env.MATCH_MINUTES || 4);   // реальная длительность матча
 const HALFTIME_MS = Number(process.env.HALFTIME_SECONDS || 30) * 1000;
 const MS_PER_SIM_MIN = (MATCH_MINUTES * 60000) / 93;
-const LOGINS = { arlpsg: 'arsenal', mirbar: 'barcelona', meirea: 'real_madrid' };
+const LOGINS = { arlpsg: 'psg', mirbar: 'barcelona', meirea: 'real_madrid' };
 
 const SQUADS = JSON.parse(fs.readFileSync(SQUADS_FILE, 'utf8'));
 const squadsByKey = Object.fromEntries(SQUADS.teams.map((t) => [t.key, t]));
@@ -35,10 +35,12 @@ function blankLineups() {
 }
 
 function coerceDb(raw) {
-  if (raw?.version === DB_VERSION && raw?.league?.rounds?.length) {
+  if (raw?.version === DB_VERSION && raw?.league?.rounds?.[0]?.matches) {
+    const league = raw.league;
+    if (!league.suspensions) league.suspensions = {};
     return {
-      league: raw.league,
-      lineups: raw.lineups || blankLineups(),
+      league,
+      lineups: { ...blankLineups(), ...(raw.lineups || {}) },
       tokens: raw.tokens || {},
       styles: { ...DEFAULT_STYLES, ...(raw.styles || {}) },
     };
@@ -62,21 +64,41 @@ async function remoteGet() {
   }
 }
 
+function migrateOld(raw) {
+  const tokens = { ...(raw?.tokens || {}) };
+  for (const [tok, key] of Object.entries(tokens)) if (key === 'arsenal') tokens[tok] = 'psg';
+  const oldStyles = raw?.styles || {};
+  if (oldStyles.arsenal && !oldStyles.psg) oldStyles.psg = oldStyles.arsenal;
+  const styles = { ...DEFAULT_STYLES };
+  for (const k of Object.keys(styles)) if (oldStyles[k]) styles[k] = oldStyles[k];
+  const lineups = blankLineups();
+  if (raw?.lineups?.arsenal && !raw.lineups.psg) lineups.psg = raw.lineups.arsenal;
+  for (const k of ['psg', 'barcelona', 'real_madrid']) if (raw?.lineups?.[k]) lineups[k] = raw.lineups[k];
+  console.log('старый сезон заменён на 10 команд, входы и стили сохранены');
+  return { league: newLeague(TEAMS_ORDER, 18, Date.now() % 100000), lineups, tokens, styles };
+}
+
 async function load() {
-  const fromCloud = coerceDb(await remoteGet());
-  if (fromCloud) {
-    console.log('сезон загружен из облака (Upstash)');
-    return fromCloud;
+  const cloudRaw = await remoteGet();
+  if (cloudRaw) {
+    const ok = coerceDb(cloudRaw);
+    if (ok) {
+      console.log('сезон загружен из облака (Upstash)');
+      return ok;
+    }
+    return migrateOld(cloudRaw);
   }
   try {
-    const fromFile = coerceDb(JSON.parse(fs.readFileSync(DB_FILE, 'utf8')));
-    if (fromFile) {
+    const fileRaw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    const ok = coerceDb(fileRaw);
+    if (ok) {
       console.log('сезон загружен из файла');
-      return fromFile;
+      return ok;
     }
-  } catch (e) { /* первый запуск или старая версия */ }
+    return migrateOld(fileRaw);
+  } catch (e) { /* первый запуск */ }
   return {
-    league: newLeague(TEAMS_ORDER, 30, Date.now() % 100000),
+    league: newLeague(TEAMS_ORDER, 18, Date.now() % 100000),
     lineups: blankLineups(),
     tokens: {},
     styles: { ...DEFAULT_STYLES },
@@ -154,9 +176,9 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 // ---- живое состояние матча -------------------------------------------------
-let live = null;
-
-function nextRoundIdx() { return DB.league.rounds.findIndex((r) => !r.played); }
+function nextRoundIdx() {
+  return DB.league.rounds.findIndex((rd) => rd.matches.some((m) => !m.played));
+}
 
 function squadFor(key) {
   const base = squadsByKey[key];
@@ -181,7 +203,11 @@ function findPlayer(key, id) { return [...squadsByKey[key].starters, ...squadsBy
 // Состав на матч: травмированные выпадают, их места занимают запасные.
 function matchSquad(key) {
   const eff = effectiveSquad(DB.league, squadFor(key));
-  return { ...eff, bench: eff.bench.filter((p) => !isOut(DB.league, p.id) && !p.promoted) };
+  return {
+    ...eff,
+    starters: eff.starters.filter((p) => !isUnavailable(DB.league, p.id)),
+    bench: eff.bench.filter((p) => !isUnavailable(DB.league, p.id) && !p.promoted),
+  };
 }
 
 function publicState(teamKey) {
@@ -189,11 +215,21 @@ function publicState(teamKey) {
   const idx = nextRoundIdx();
   return {
     account: teamKey || null,
-    teams: SQUADS.teams.map((t) => ({ key: t.key, name: t.name, coach: t.coach, avg: t.avg_starters })),
+    teams: SQUADS.teams.map((t) => ({ key: t.key, name: t.name, coach: t.coach, avg: t.avg_starters, human: HUMAN_KEYS.includes(t.key) })),
     table: standings(league, squadsByKey),
-    rounds: league.rounds.map((r) => ({
-      round: r.round, home: r.home, away: r.away, played: r.played, hs: r.hs, as: r.as,
-      summary: r.played ? { scorers: r.scorers, stats: r.stats, cards: r.cards, mvp: r.mvp } : null,
+    rounds: league.rounds.map((rd, rIdx) => ({
+      round: rd.round,
+      matches: rd.matches.map((m, mIdx) => {
+        const l = lives.get(matchKey(rIdx, mIdx));
+        return {
+          id: m.id, home: m.home, away: m.away, played: m.played, hs: m.hs, as: m.as,
+          live: l ? l.status : null,
+          liveScore: l ? l.score : null,
+          summary: m.played ? {
+            scorers: m.scorers || [], stats: m.stats || null, cards: m.cards || [], mvp: m.mvp || null,
+          } : null,
+        };
+      }),
     })),
     roundIdx: idx,
     lineups: DB.lineups,
@@ -201,38 +237,94 @@ function publicState(teamKey) {
     squad: squadPayload(teamKey),
     squads: Object.fromEntries(SQUADS_ORDER_KEYS.map((k) => [k, squadPayload(k)])),
     injuries: league.injuries,
+    suspensions: league.suspensions || {},
     playerStats: league.players,
-    live: liveView(),
+    live: liveViewFor(teamKey),
     serverTime: Date.now(),
   };
 }
 
 const SQUADS_ORDER_KEYS = SQUADS.teams.map((t) => t.key);
 
+const CLIENT_FIELDS = [
+  'id', 'name', 'pos', 'role', 'captain', 'age', 'nationality', 'overall',
+  'pace', 'shooting', 'passing', 'dribbling', 'defending', 'physicality', 'power_stamina',
+  'attacking_finishing', 'mentality_vision', 'skill_long_passing', 'skill_ball_control',
+  'power_strength', 'defending_awareness', 'mentality_aggression', 'mentality_composure',
+  'goalkeeping_reflexes', 'goalkeeping_diving', 'goalkeeping_positioning',
+  'attacking_short_passing', 'power_jumping',
+];
+const clientPlayer = (p, extra = {}) => {
+  const out = {};
+  for (const k of CLIENT_FIELDS) if (p[k] !== undefined) out[k] = p[k];
+  return { ...out, ...extra };
+};
+
 function squadPayload(key) {
   if (!key) return null;
   const s = squadFor(key);
   const eff = effectiveSquad(DB.league, s);
+  const flags = (p) => ({ injured: !!DB.league.injuries[p.id], suspended: !!(DB.league.suspensions?.[p.id]) });
   return {
     key, name: s.name, coach: s.coach, formation: s.formation,
-    starters: eff.starters.map((p) => ({ ...p, injured: !!DB.league.injuries[p.id] })),
-    bench: eff.bench.map((p) => ({ ...p, injured: !!DB.league.injuries[p.id] })),
-    raw: { starters: s.starters, bench: s.bench },
+    starters: eff.starters.map((p) => clientPlayer(p, flags(p))),
+    bench: eff.bench.map((p) => clientPlayer(p, flags(p))),
+    raw: { starters: s.starters.map((p) => clientPlayer(p)), bench: s.bench.map((p) => clientPlayer(p)) },
   };
 }
 
-function liveView() {
-  if (!live) return null;
+const lives = new Map();
+const matchKey = (rIdx, mIdx) => `${rIdx}:${mIdx}`;
+
+function liveView(l) {
+  if (!l) return null;
   return {
-    roundIdx: live.roundIdx, round: live.round, home: live.home, away: live.away,
-    status: live.status, ready: live.ready, events: live.events,
-    score: live.score, startedAt: live.startedAt, endedAt: live.endedAt,
-    breakUntil: live.breakUntil || null,
-    half: live.sim?.half || 1,
-    styles: live.sim
-      ? { [live.home]: live.sim.home.coach.styleId, [live.away]: live.sim.away.coach.styleId }
-      : { [live.home]: DB.styles[live.home], [live.away]: DB.styles[live.away] },
+    key: l.key, roundIdx: l.roundIdx, matchIdx: l.matchIdx, round: l.round,
+    home: l.home, away: l.away,
+    status: l.status, ready: l.ready, events: l.events,
+    score: l.score, startedAt: l.startedAt, endedAt: l.endedAt,
+    breakUntil: l.breakUntil || null,
+    half: l.sim?.half || 1,
+    styles: l.sim
+      ? { [l.home]: l.sim.home.coach.styleId, [l.away]: l.sim.away.coach.styleId }
+      : { [l.home]: DB.styles[l.home], [l.away]: DB.styles[l.away] },
   };
+}
+
+function liveViewFor(teamKey) {
+  if (!teamKey) return null;
+  let finished = null;
+  for (const l of lives.values()) {
+    if (l.home !== teamKey && l.away !== teamKey) continue;
+    if (l.status !== 'done') return liveView(l);
+    finished = l;
+  }
+  return finished ? liveView(finished) : null;
+}
+
+function broadcastLiveFor(l) {
+  if (!l) return;
+  for (const res of clients) {
+    if (res.__team === l.home || res.__team === l.away) {
+      try { res.write(`event: live\ndata: ${JSON.stringify(liveView(l))}\n\n`); } catch (e) { /* ignore */ }
+    }
+  }
+}
+
+function broadcastToMatch(l, type, data) {
+  if (!l) return;
+  const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const res of clients) {
+    if (res.__team === l.home || res.__team === l.away) {
+      try { res.write(payload); } catch (e) { /* ignore */ }
+    }
+  }
+}
+
+function broadcastAllLive() {
+  for (const res of clients) {
+    try { res.write(`event: live\ndata: ${JSON.stringify(liveViewFor(res.__team))}\n\n`); } catch (e) { /* ignore */ }
+  }
 }
 
 const clients = new Set();
@@ -249,103 +341,185 @@ function broadcastState() {
   }
 }
 
-// ---- жизненный цикл матча --------------------------------------------------
+// ---- жизненный цикл матчей -------------------------------------------------
+const isHuman = (key) => HUMAN_KEYS.includes(key);
+
+function snapSquad(sq) {
+  return {
+    starters: sq.starters.map((p) => ({ id: p.id, pos: p.pos })),
+    bench: sq.bench.map((p) => ({ id: p.id, pos: p.pos })),
+  };
+}
+
+function rebuildSquad(snap, base) {
+  const all = new Map([...base.starters, ...base.bench].map((p) => [p.id, p]));
+  const take = (arr) => arr.map((s) => {
+    const p = all.get(s.id);
+    return p ? { ...p, pos: s.pos, role: s.pos } : null;
+  }).filter(Boolean);
+  return { ...base, starters: take(snap.starters), bench: take(snap.bench) };
+}
+
+function prepareFixture(rIdx, mIdx) {
+  const rd = DB.league.rounds[rIdx];
+  const m = rd.matches[mIdx];
+  const homeSquad = matchSquad(m.home);
+  const awaySquad = matchSquad(m.away);
+  const styles = { [m.home]: DB.styles[m.home], [m.away]: DB.styles[m.away] };
+  const seed = (rd.round * 7919 + mIdx * 104729 + DB.league.seed) % 100000;
+  m.seed = seed;
+  m.snapshot = { home: snapSquad(homeSquad), away: snapSquad(awaySquad), styles };
+  return { rd, m, homeSquad, awaySquad, styles, seed };
+}
+
+/** Бот-бот матчи не ждут тренеров: считаем мгновенно, события доступны в повторе. */
+function simulateBotMatch(rIdx, mIdx) {
+  const { m, homeSquad, awaySquad, styles, seed } = prepareFixture(rIdx, mIdx);
+  const sim = new MatchSim({
+    homeKey: m.home, awayKey: m.away,
+    squads: { [m.home]: homeSquad, [m.away]: awaySquad },
+    seed, styles,
+  });
+  sim.runAll();
+  applyResult(DB.league, rIdx, mIdx, sim, squadsByKey);
+}
+
+function ensureRound() {
+  for (let guard = 0; guard < 30; guard++) {
+    const rIdx = nextRoundIdx();
+    if (rIdx < 0) return false;
+    const rd = DB.league.rounds[rIdx];
+    let simulated = false;
+    for (let mIdx = 0; mIdx < rd.matches.length; mIdx++) {
+      const m = rd.matches[mIdx];
+      if (m.played) continue;
+      if (!isHuman(m.home) && !isHuman(m.away) && !lives.has(matchKey(rIdx, mIdx))) {
+        simulateBotMatch(rIdx, mIdx);
+        simulated = true;
+      }
+    }
+    if (simulated) { persist(); broadcastState(); }
+    if (rd.matches.every((m) => m.played)) continue;
+    return simulated;
+  }
+  return false;
+}
+
 function markReady(teamKey, roundIdx) {
+  ensureRound();
   const idx = nextRoundIdx();
   if (idx === -1) return { error: 'Сезон завершён' };
-  const rd = DB.league.rounds[idx];
   if (roundIdx != null && roundIdx !== idx) return { error: 'Тур уже изменился' };
-  if (teamKey !== rd.home && teamKey !== rd.away) return { error: 'Ваша команда не играет этот тур' };
+  const rd = DB.league.rounds[idx];
+  const mIdx = rd.matches.findIndex((m) => m.home === teamKey || m.away === teamKey);
+  if (mIdx < 0) return { error: 'Ваша команда не играет этот тур' };
+  const m = rd.matches[mIdx];
+  if (m.played) return { error: 'Матч уже сыгран' };
 
-  if (!live || live.roundIdx !== idx || live.status === 'done') {
-    live = {
-      roundIdx: idx, round: rd.round, home: rd.home, away: rd.away,
-      status: 'waiting', ready: { [rd.home]: false, [rd.away]: false },
-      events: [], score: [0, 0], sim: null, timer: null, startedAt: null, endedAt: null,
+  const key = matchKey(idx, mIdx);
+  let l = lives.get(key);
+  if (!l) {
+    l = {
+      key, roundIdx: idx, matchIdx: mIdx, round: rd.round, home: m.home, away: m.away,
+      status: 'waiting',
+      ready: { [m.home]: !isHuman(m.home), [m.away]: !isHuman(m.away) },
+      events: [], score: [0, 0], sim: null, timer: null,
+      startedAt: null, endedAt: null, breakUntil: null,
     };
+    lives.set(key, l);
   }
-  live.ready[teamKey] = true;
-  if (live.ready[rd.home] && live.ready[rd.away] && live.status === 'waiting') startMatch();
-  broadcast('live', liveView());
-  return { ok: true, live: liveView() };
+  l.ready[teamKey] = true;
+  if (l.ready[m.home] && l.ready[m.away] && l.status === 'waiting') startMatch(l);
+  else { broadcastLiveFor(l); broadcastState(); }
+  return { ok: true, live: liveView(l) };
 }
 
-function startMatch() {
-  live.status = 'running';
-  live.startedAt = Date.now();
-  const squads = Object.fromEntries(SQUADS_ORDER_KEYS.map((k) => [k, matchSquad(k)]));
-  live.sim = new MatchSim({
-    homeKey: live.home, awayKey: live.away, squads,
-    seed: (live.round * 7919 + DB.league.seed) % 100000,
-    styles: { [live.home]: DB.styles[live.home], [live.away]: DB.styles[live.away] },
+function startMatch(l) {
+  const { homeSquad, awaySquad, styles, seed } = prepareFixture(l.roundIdx, l.matchIdx);
+  l.status = 'running';
+  l.startedAt = Date.now();
+  l.sim = new MatchSim({
+    homeKey: l.home, awayKey: l.away,
+    squads: { [l.home]: homeSquad, [l.away]: awaySquad },
+    seed, styles,
   });
-  broadcast('live', liveView());
-  pump();
+  persist();
+  broadcastLiveFor(l);
+  broadcastState();
+  pump(l.key);
 }
 
-function pump() {
-  if (!live || live.status !== 'running') return;
+function pump(key) {
+  const l = lives.get(key);
+  if (!l || l.status !== 'running') return;
   let ev;
   try {
-    ev = live.sim.tick();
+    ev = l.sim.tick();
   } catch (err) {
     console.error('симуляция упала', err);
-    finishMatch(true);
+    finishMatch(l, true);
     return;
   }
-  if (!ev) { finishMatch(true); return; }
+  if (!ev) { finishMatch(l, true); return; }
   const light = {
     id: ev.id, clock: ev.clock, type: ev.type, teamKey: ev.teamKey, text: ev.text,
     score: ev.score, scorer: ev.scorer, assist: ev.assist, player: ev.player,
     in: ev.in, out: ev.out, reason: ev.reason, serious: ev.serious,
     style: ev.style, styleName: ev.styleName,
   };
-  live.events.push(light);
-  live.score = ev.score;
-  broadcast('event', light);
+  l.events.push(light);
+  l.score = ev.score;
+  broadcastToMatch(l, 'event', light);
   if (ev.type === 'ht') {
-    live.status = 'halftime';
-    live.breakUntil = Date.now() + HALFTIME_MS;
-    clearTimeout(live.timer);
-    live.timer = setTimeout(resumeSecondHalf, HALFTIME_MS);
-    broadcast('live', liveView());
+    l.status = 'halftime';
+    l.breakUntil = Date.now() + HALFTIME_MS;
+    clearTimeout(l.timer);
+    l.timer = setTimeout(() => resumeSecondHalf(key), HALFTIME_MS);
+    broadcastLiveFor(l);
     broadcastState();
     return;
   }
   let delay = Math.min(4200, Math.max(90, (ev.dur || 0.3) * MS_PER_SIM_MIN));
   if (ev.type === 'goal') delay += 1400;
   if (ev.type === 'ft' || ev.type === 'red') delay += 900;
-  live.timer = setTimeout(pump, delay);
+  l.timer = setTimeout(() => pump(key), delay);
 }
 
-function resumeSecondHalf() {
-  if (!live || live.status !== 'halftime') return;
-  live.status = 'running';
-  live.breakUntil = null;
-  broadcast('live', liveView());
-  pump();
+function resumeSecondHalf(key) {
+  const l = lives.get(key);
+  if (!l || l.status !== 'halftime') return;
+  l.status = 'running';
+  l.breakUntil = null;
+  broadcastLiveFor(l);
+  pump(key);
 }
 
-function finishMatch(commit) {
-  clearTimeout(live.timer);
-  const sim = live.sim;
-  live.status = 'done';
-  live.breakUntil = null;
-  live.endedAt = Date.now();
+function finishMatch(l, commit) {
+  clearTimeout(l.timer);
+  const sim = l.sim;
+  l.status = 'done';
+  l.breakUntil = null;
+  l.endedAt = Date.now();
   let summary = null;
-  if (commit && sim && !DB.league.rounds[live.roundIdx].played) {
-    applyResult(DB.league, live.roundIdx, sim);
-    persist();
-    const rd = DB.league.rounds[live.roundIdx];
-    summary = {
-      round: rd.round, home: rd.home, away: rd.away, hs: rd.hs, as: rd.as,
-      scorers: rd.scorers, stats: rd.stats, cards: rd.cards, mvp: rd.mvp,
-    };
+  if (commit && sim) {
+    const m = DB.league.rounds[l.roundIdx].matches[l.matchIdx];
+    if (!m.played) {
+      applyResult(DB.league, l.roundIdx, l.matchIdx, sim, squadsByKey);
+      persist();
+      summary = { round: l.round, home: l.home, away: l.away, hs: m.hs, as: m.as };
+    }
   }
-  broadcast('match_end', { live: liveView(), summary, state: DB.league.rounds.map((r) => ({ round: r.round, played: r.played, hs: r.hs, as: r.as })) });
+  broadcastToMatch(l, 'match_end', { live: liveView(l), summary });
   broadcastState();
-  const finished = live;
-  setTimeout(() => { if (live === finished && live.status === 'done') { live = null; broadcast('live', null); broadcastState(); } }, 9000);
+  setTimeout(() => {
+    const cur = lives.get(l.key);
+    if (cur === l && cur.status === 'done') {
+      lives.delete(l.key);
+      broadcastAllLive();
+      broadcastState();
+    }
+  }, 9000);
+  ensureRound();
 }
 
 // ---- HTTP ------------------------------------------------------------------
@@ -401,7 +575,7 @@ const server = http.createServer(async (req, res) => {
       });
       res.__team = a.team;
       res.write(`event: hello\ndata: ${JSON.stringify(publicState(a.team))}\n\n`);
-      res.write(`event: live\ndata: ${JSON.stringify(liveView())}\n\n`);
+      res.write(`event: live\ndata: ${JSON.stringify(liveViewFor(a.team))}\n\n`);
       clients.add(res);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) { /* ignore */ } }, 15000);
       req.on('close', () => { clearInterval(ping); clients.delete(res); });
@@ -430,8 +604,32 @@ async function apiOnly(req, res, p, a) {
       const { roundIdx } = await readBody(req);
       const r = markReady(team, roundIdx);
       if (r.error) return send(res, 400, JSON.stringify(r));
-      broadcastState();
       return send(res, 200, JSON.stringify(r));
+    }
+
+    if (p === '/api/replay') {
+      const u = new URL(req.url, 'http://x');
+      const rIdx = Number(u.searchParams.get('r'));
+      const mIdx = Number(u.searchParams.get('m'));
+      const rd = DB.league.rounds[rIdx];
+      const m = rd?.matches?.[mIdx];
+      if (!m) return send(res, 400, JSON.stringify({ error: 'Матч не найден' }));
+      const l = lives.get(matchKey(rIdx, mIdx));
+      if (l && l.status !== 'done') return send(res, 409, JSON.stringify({ error: 'Матч ещё идёт' }));
+      if (!m.played || !m.snapshot || !m.seed) return send(res, 400, JSON.stringify({ error: 'Запись недоступна' }));
+      const squads = {
+        [m.home]: rebuildSquad(m.snapshot.home, squadsByKey[m.home]),
+        [m.away]: rebuildSquad(m.snapshot.away, squadsByKey[m.away]),
+      };
+      const sim = new MatchSim({
+        homeKey: m.home, awayKey: m.away, squads,
+        seed: m.seed, styles: m.snapshot.styles || {},
+      });
+      sim.runAll();
+      return send(res, 200, JSON.stringify({
+        round: rd.round, home: m.home, away: m.away, hs: m.hs, as: m.as,
+        events: sim.events, stats: m.stats, scorers: m.scorers || [], cards: m.cards || [], mvp: m.mvp || null,
+      }));
     }
 
     if (p === '/api/xi' && req.method === 'POST') {
@@ -444,6 +642,8 @@ async function apiOnly(req, res, p, a) {
       }
       const gkCount = slots.filter((s) => s.pos === 'GK' && findPlayer(team, s.id)?.pos === 'GK').length;
       if (gkCount !== 1) return send(res, 400, JSON.stringify({ error: 'В старте должен быть ровно один вратарь' }));
+      const bad = slots.map((s) => findPlayer(team, s.id)).find((p) => p && isUnavailable(DB.league, p.id));
+      if (bad) return send(res, 400, JSON.stringify({ error: `${bad.name} недоступен: травма или дисквалификация` }));
       DB.lineups[team] = { slots: slots.map((s) => ({ id: s.id, pos: s.pos })) };
       persist();
       broadcastState();
@@ -453,25 +653,31 @@ async function apiOnly(req, res, p, a) {
     if (p === '/api/style' && req.method === 'POST') {
       const { styleId } = await readBody(req);
       if (styleOf(styleId).id !== styleId) return send(res, 400, JSON.stringify({ error: 'Неизвестный стиль' }));
-      const active = live && (live.home === team || live.away === team) ? live : null;
+      const active = [...lives.values()]
+        .find((l) => (l.home === team || l.away === team) && l.status !== 'done') || null;
       if (active && active.status === 'running') {
         return send(res, 400, JSON.stringify({ error: 'Стиль меняется до матча или в перерыве' }));
       }
       DB.styles[team] = styleId;
+      if (active?.sim && active.status === 'halftime') {
+        active.sim.setStyle(team, styleId);
+        const m = DB.league.rounds[active.roundIdx].matches[active.matchIdx];
+        if (m?.snapshot?.styles) m.snapshot.styles[team] = styleId;
+      }
       persist();
-      if (active?.sim && active.status === 'halftime') active.sim.setStyle(team, styleId);
-      broadcast('live', liveView());
+      if (active) broadcastLiveFor(active);
       broadcastState();
       return send(res, 200, JSON.stringify({ ok: true, styleId }));
     }
 
     if (p === '/api/reset' && req.method === 'POST') {
-      clearTimeout(live?.timer);
-      live = null;
-      DB.league = newLeague(TEAMS_ORDER, 30, Date.now() % 100000);
+      for (const l of lives.values()) clearTimeout(l.timer);
+      lives.clear();
+      DB.league = newLeague(TEAMS_ORDER, 18, Date.now() % 100000);
       DB.lineups = blankLineups();
       persist();
-      broadcast('live', null);
+      broadcastAllLive();
+      ensureRound();
       broadcastState();
       return send(res, 200, JSON.stringify({ ok: true }));
     }
@@ -503,7 +709,10 @@ function serveStatic(req, res, p) {
     });
 }
 
+ensureRound();
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Touchline Liga: http://localhost:${PORT}`);
   console.log('логины: ArlPsg / MirBar / MeiRea');
+  console.log('тур:', nextRoundIdx() + 1, '| клубов:', TEAMS_ORDER.length);
 });

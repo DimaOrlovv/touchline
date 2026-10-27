@@ -1,16 +1,27 @@
 import { esc, bar, ratingChip, sheet } from './dom.js';
-import { icon } from './icons.js';
+import { icon, EVENT_ICON } from './icons.js';
 import { spinner } from './feedback.js';
 import { STYLES, applyStyle, styleOf } from '../engine/styles.js';
 import { coachOf } from '../engine/coach.js';
 
 export const LOGOS = {
-  arsenal: 'icons/logos/psg.png',
+  psg: 'icons/logos/psg.png',
   barcelona: 'icons/logos/barcelona.png',
   real_madrid: 'icons/logos/real_madrid.png',
+  arsenal: 'icons/logos/arsenal.png',
+  manchester_city: 'icons/logos/manchester_city.png',
+  bayern_munich: 'icons/logos/bayern_munich.png',
+  liverpool: 'icons/logos/liverpool.png',
+  chelsea: 'icons/logos/chelsea.png',
+  atletico_madrid: 'icons/logos/atletico_madrid.png',
+  inter_milan: 'icons/logos/inter_milan.png',
 };
 
-const TONE = { arsenal: 'psg', barcelona: 'fcb', real_madrid: 'rma' };
+const TONE = {
+  psg: 'psg', barcelona: 'fcb', real_madrid: 'rma', arsenal: 'ars',
+  manchester_city: 'mci', bayern_munich: 'bay', liverpool: 'liv',
+  chelsea: 'che', atletico_madrid: 'atm', inter_milan: 'int',
+};
 export const toneOf = (key) => TONE[key] || 'psg';
 
 export function crest(key, name, size = '') {
@@ -20,6 +31,29 @@ export function crest(key, name, size = '') {
 
 const POS_ORDER = ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CM', 'LW', 'ST', 'RW'];
 const nameOf = (ctx, key) => ctx.S.teams.find((t) => t.key === key)?.name || key;
+
+export const allFixtures = (S) => S.rounds.flatMap((rd, rIdx) =>
+  rd.matches.map((m, mIdx) => ({ ...m, round: rd.round, rIdx, mIdx })));
+export const findFixture = (S, id) => allFixtures(S).find((m) => m.id === id);
+const roundDone = (rd) => rd && rd.matches.every((m) => m.played);
+
+function fixtureRow(ctx, m) {
+  const hn = nameOf(ctx, m.home);
+  const an = nameOf(ctx, m.away);
+  const mine = m.home === ctx.account || m.away === ctx.account;
+  const live = m.live === 'running' || m.live === 'halftime';
+  const score = m.played ? `${m.hs}:${m.as}` : live ? '<span class="live-dot"></span>' : '–:–';
+  const act = live && mine ? 'watch' : 'match';
+  return `<button class="round ${m.played ? 'is-done' : ''}" data-act="${act}" data-id="${m.id}">
+    <span class="round__n">${m.played ? '' : live ? icon('play', '', 12) : ''}</span>
+    <span class="round__teams">
+      <span class="round__side ${m.home === ctx.account ? 'is-me' : ''}">${crest(m.home, hn, 'crest--sm')}${esc(hn)}</span>
+      <span class="round__sc">${score}</span>
+      <span class="round__side right ${m.away === ctx.account ? 'is-me' : ''}">${esc(an)}${crest(m.away, an, 'crest--sm')}</span>
+    </span>
+    <span class="round__act">${m.played ? icon('chevron', '', 16) : ''}</span>
+  </button>`;
+}
 
 // ---------- стиль игры ----------
 export function styleParams(styleId, teamKey) {
@@ -78,7 +112,7 @@ export function renderLogin(ctx) {
   return {
     bare: true,
     html: `<div class="login">
-      <header class="login__head"><h1>Touchline Liga</h1><p>Три клуба. Тридцать туров. Матч запускают оба тренера.</p></header>
+      <header class="login__head"><h1>Touchline Liga</h1><p>Десять клубов. Восемнадцать туров. Матчи тренеров запускаются вместе, боты играют сами.</p></header>
       <form class="login__form" data-act="submit-login" autocomplete="off">
         <div class="field">
           <label for="lg">Логин тренера</label>
@@ -100,32 +134,48 @@ export function renderHome(ctx) {
   const { S, account } = ctx;
   const rd = S.rounds[S.roundIdx];
   const team = S.teams.find((t) => t.key === account);
-  const live = S.live;
   const mine = S.table.find((r) => r.key === account);
-  const inMatch = rd && (rd.home === account || rd.away === account);
-  const running = live && (live.status === 'running' || live.status === 'halftime');
-  const iAmReady = live && inMatch && live.ready?.[account];
+  const own = rd?.matches.find((m) => m.home === account || m.away === account) || null;
+  const live = S.live;
+  const running = !!(live && own && ['running', 'halftime'].includes(live.status));
+  const ready = !!(live && own && live.ready?.[account]);
+  const done = roundDone(rd);
 
   let actions;
   if (!rd) actions = `<div class="actions"><button class="btn btn--primary" data-act="reset">Новый сезон</button></div>`;
   else if (running) actions = `<div class="actions"><button class="btn btn--primary" data-act="watch">${icon('play', '', 18)} Идёт матч — смотреть</button></div>`;
-  else if (inMatch) actions = `<div class="actions"><button class="btn btn--primary" data-act="ready" ${iAmReady ? 'disabled' : ''}>${iAmReady ? `${spinner(18)} Ожидание соперника` : 'Играть'}</button></div>`;
-  else actions = `<div class="actions"><button class="btn" data-act="watch" ${live ? '' : 'disabled'}>${live ? 'Смотреть матч' : 'Ждём старта'}</button></div>`;
+  else if (own?.played) actions = `<div class="actions"><button class="btn" data-act="replay" data-id="${own.id}">${icon('play', '', 16)} Трансляция матча</button></div>
+    ${done ? '' : '<p class="hint">Тур ещё не завершён — ждём остальные матчи.</p>'}`;
+  else if (own) actions = `<div class="actions"><button class="btn btn--primary" data-act="ready" ${ready ? 'disabled' : ''}>${ready ? `${spinner(18)} Ожидание соперника` : 'Играть'}</button></div>`;
+  else actions = '';
 
-  const last = [...S.rounds].reverse().find((r) => r.played);
+  const score = running
+    ? `${live.score[0]}:${live.score[1]}`
+    : own?.played ? `${own.hs}:${own.as}` : '–:–';
+  const stateLabel = running
+    ? live.status === 'halftime' ? 'перерыв' : (live.events?.[live.events.length - 1]?.clock || 'идёт')
+    : own?.played ? 'матч окончен' : '';
+
+  const last = [...allFixtures(S)].reverse()
+    .find((m) => (m.home === account || m.away === account) && m.played);
 
   return {
     title: team?.name || 'Матч',
     html: `<div class="stack">
       <section class="card hero ${TONE[account]}-edge">
-        <header class="card__head"><h2>Тур ${rd ? rd.round : S.rounds.length}</h2><span class="tag">${esc(team?.coach || '')}</span></header>
-        ${rd ? `<button class="fx" data-act="match" data-idx="${S.roundIdx}">
-          <span class="fx__side">${crest(rd.home, nameOf(ctx, rd.home))}<b>${esc(nameOf(ctx, rd.home))}</b></span>
-          <span class="fx__score">${rd.played ? `${rd.hs}:${rd.as}` : running ? '<span class="live-dot"></span>' : '–:–'}</span>
-          <span class="fx__side right"><b>${esc(nameOf(ctx, rd.away))}</b>${crest(rd.away, nameOf(ctx, rd.away))}</span>
+        <header class="card__head"><h2>${rd ? `Тур ${rd.round}` : 'Сезон завершён'}</h2><span class="tag">${esc(team?.coach || '')}</span></header>
+        ${own ? `<button class="fx" data-act="match" data-id="${own.id}">
+          <span class="fx__side">${crest(own.home, nameOf(ctx, own.home))}<b>${esc(nameOf(ctx, own.home))}</b></span>
+          <span class="fx__score">${score}${stateLabel ? `<em class="fx__state">${esc(stateLabel)}</em>` : ''}</span>
+          <span class="fx__side right"><b>${esc(nameOf(ctx, own.away))}</b>${crest(own.away, nameOf(ctx, own.away))}</span>
         </button>` : '<p class="pad muted">Все туры сыграны.</p>'}
         ${actions}
       </section>
+
+      ${rd ? `<section class="card">
+        <header class="card__head"><h2>Матчи тура</h2><span class="tag">${rd.matches.filter((m) => m.played).length}/5</span></header>
+        <div class="rounds">${rd.matches.map((m) => fixtureRow(ctx, m)).join('')}</div>
+      </section>` : ''}
 
       ${styleCard(ctx)}
 
@@ -142,7 +192,7 @@ export function renderHome(ctx) {
 
       ${last ? `<section class="card">
         <header class="card__head"><h2>Последний матч</h2>
-          <button class="link" data-act="match" data-idx="${S.rounds.indexOf(last)}">Статистика ${icon('chevron', '', 14)}</button></header>
+          <button class="link" data-act="match" data-id="${last.id}">Статистика ${icon('chevron', '', 14)}</button></header>
         <div class="lastline">${crest(last.home, nameOf(ctx, last.home))}<b>${last.hs} : ${last.as}</b>${crest(last.away, nameOf(ctx, last.away))}</div>
         ${(last.summary?.scorers || []).length ? `<div class="scorers">${last.summary.scorers.slice(0, 4).map((s) => `<span>${esc(s.min)} ${esc(s.player)}</span>`).join('')}</div>` : ''}
       </section>` : ''}
@@ -168,14 +218,17 @@ export function renderSquad(ctx) {
   const byId = Object.fromEntries(all.map((p) => [p.id, p]));
   const starters = slots.map((s) => ({ ...byId[s.id], pos: s.pos })).filter((p) => p.id);
   const bench = all.filter((p) => !slots.some((s) => s.id === p.id));
+  const unavailable = starters.filter((p) => S.injuries[p.id] || S.suspensions?.[p.id]);
 
   const row = (p, kind) => {
     const st = S.playerStats[p.id] || {};
     const line = st.apps ? `${st.goals} гол · ${st.assists} пас · ${(st.ratingSum / (st.ratingN || 1)).toFixed(2)}` : '';
+    const inj = S.injuries[p.id] || 0;
+    const sus = S.suspensions?.[p.id] || 0;
     return `<div class="prow ${isMine ? 'is-editable' : ''}" data-prow="${p.id}" data-kind="${kind}">
       ${isMine ? '<span class="grip" aria-hidden="true"></span>' : ''}
       <span class="prow__pos">${esc(p.pos)}</span>
-      <span class="prow__name">${esc(p.name)}${p.captain ? '<i class="cap">к</i>' : ''}${S.injuries[p.id] ? '<i class="badge badge--out">травма</i>' : ''}${line ? `<em>${esc(line)}</em>` : ''}</span>
+      <span class="prow__name">${esc(p.name)}${p.captain ? '<i class="cap">к</i>' : ''}${inj ? `<i class="badge badge--out">травма ${inj}</i>` : ''}${sus ? `<i class="badge badge--out">дисквал. ${sus}</i>` : ''}${line ? `<em>${esc(line)}</em>` : ''}</span>
       <span class="prow__nums">${ratingChip(p.overall)}</span>
     </div>`;
   };
@@ -189,6 +242,7 @@ export function renderSquad(ctx) {
       <section class="card">
         <header class="card__head"><h2>Стартовый XI · ${esc(club.formation)}</h2><span class="tag">${esc(club.coach)}</span></header>
         <div class="plist" data-zone="start">${starters.map((p) => row(p, 'start')).join('')}</div>
+        ${isMine && unavailable.length ? `<p class="form-error" style="padding:10px 12px 0">В старте недоступны: ${unavailable.map((p) => esc(p.name)).join(', ')}. Замените их на запасных.</p>` : ''}
       </section>
 
       <section class="card">
@@ -197,8 +251,8 @@ export function renderSquad(ctx) {
       </section>
 
       ${isMine
-        ? `<div class="xibar ${ctx.dirty ? 'is-on' : ''}"><span>${ctx.dirty ? 'Состав изменён — не сохранён' : 'Состав сохранён'}</span>
-            <button class="btn btn--primary" data-act="save-xi" ${ctx.dirty ? '' : 'disabled'}>${ctx.busy ? spinner(18) : 'Сохранить'}</button></div>
+        ? `<div class="xibar ${ctx.dirty ? 'is-on' : ''}"><span>${unavailable.length ? 'Уберите травмированных и дисквалифицированных из старта' : ctx.dirty ? 'Состав изменён — не сохранён' : 'Состав сохранён'}</span>
+            <button class="btn btn--primary" data-act="save-xi" ${ctx.dirty && !unavailable.length ? '' : 'disabled'}>${ctx.busy ? spinner(18) : 'Сохранить'}</button></div>
           <p class="hint hint--row">${icon('squad', '', 14)} Тап по игроку — карточка. Тяни за точки слева, чтобы менять местами.</p>`
         : `<p class="hint">Состав показывает ${esc(club.coach)}. Замены в матче делает только тренер.</p>`}
     </div>`,
@@ -225,7 +279,7 @@ export function renderTable(ctx) {
     title: 'Таблица',
     html: `<div class="stack">
       <section class="card">
-        <header class="card__head"><h2>Положение</h2><span class="tag">${S.rounds.filter((r) => r.played).length}/${S.rounds.length} туров</span></header>
+        <header class="card__head"><h2>Положение</h2><span class="tag">${S.rounds.filter((rd) => rd.matches.every((m) => m.played)).length}/${S.rounds.length} туров</span></header>
         <table class="standings">
           <thead><tr><th>#</th><th>Клуб</th><th>И</th><th>В</th><th>Н</th><th>П</th><th>М</th><th>О</th></tr></thead>
           <tbody>${S.table.map((r, i) => `<tr class="${r.key === ctx.account ? 'is-me' : ''} zone-${i}" data-act="club" data-key="${r.key}">
@@ -243,7 +297,7 @@ export function renderTable(ctx) {
           const f = find(id); if (!f) return '';
           return `<button class="prow" data-act="player" data-id="${id}">
             <span class="prow__pos">${v.goals}<small>+</small>${v.assists}</span>
-            <span class="prow__name">${esc(f.p.name)}${crest(f.team, '', 'crest--xs')}</span>
+            <span class="prow__name">${esc(f.p.name)}${crest(f.team, nameOf(ctx, f.team), 'crest--xs')}</span>
             <span class="prow__nums">${ratingChip(f.p.overall)}</span></button>`;
         }).join('')}</div>` : '<p class="muted pad">Голов пока не было.</p>'}
       </section>
@@ -261,39 +315,33 @@ export function renderTable(ctx) {
 // ---------- календарь ----------
 export function renderCalendar(ctx) {
   const { S } = ctx;
-  const groups = [];
-  for (let i = 0; i < S.rounds.length; i += 5) groups.push(S.rounds.slice(i, i + 5));
   return {
     title: 'Календарь',
     html: `<div class="stack">
-      ${groups.map((grp, gi) => `<section class="card">
-        <header class="card__head"><h2>${gi * 5 + 1}–${gi * 5 + grp.length}</h2></header>
-        <div class="rounds">${grp.map((rd) => `<button class="round ${rd.played ? 'is-done' : ''}" data-act="match" data-idx="${S.rounds.indexOf(rd)}">
-          <span class="round__n">${rd.round}</span>
-          <span class="round__teams">
-            <span class="round__side ${rd.home === ctx.account ? 'is-me' : ''}">${crest(rd.home, nameOf(ctx, rd.home), 'crest--sm')}${esc(nameOf(ctx, rd.home))}</span>
-            <span class="round__sc">${rd.played ? `${rd.hs}:${rd.as}` : '·'}</span>
-            <span class="round__side right ${rd.away === ctx.account ? 'is-me' : ''}">${esc(nameOf(ctx, rd.away))}${crest(rd.away, nameOf(ctx, rd.away), 'crest--sm')}</span>
-          </span>
-          <span class="round__act">${rd.played ? icon('chevron', '', 16) : ''}</span>
-        </button>`).join('')}</div>
+      ${S.rounds.map((rd) => `<section class="card">
+        <header class="card__head"><h2>Тур ${rd.round}</h2><span class="tag">${rd.matches.filter((m) => m.played).length}/5</span></header>
+        <div class="rounds">${rd.matches.map((m) => fixtureRow(ctx, m)).join('')}</div>
       </section>`).join('')}
     </div>`,
   };
 }
 
 // ---------- статистика матча ----------
-export function matchSheet(ctx, idx) {
+export function matchSheet(ctx, id) {
   const { S } = ctx;
-  const rd = S.rounds[idx];
-  if (!rd) return '';
-  const hn = nameOf(ctx, rd.home), an = nameOf(ctx, rd.away);
-  if (!rd.played) {
-    return sheet(`Тур ${rd.round}`, `<div class="upcoming">
-      <div class="up__teams">${crest(rd.home, hn, 'crest--lg')}<b>${esc(hn)}</b><span>—</span><b>${esc(an)}</b>${crest(rd.away, an, 'crest--lg')}</div>
-      <p class="muted">Матч ещё не сыгран.</p></div>`);
+  const f = findFixture(S, id);
+  if (!f) return '';
+  const hn = nameOf(ctx, f.home), an = nameOf(ctx, f.away);
+  const live = f.live === 'running' || f.live === 'halftime';
+  if (!f.played) {
+    const mine = f.home === ctx.account || f.away === ctx.account;
+    return sheet(`Тур ${f.round}`, `<div class="upcoming">
+      <div class="up__teams">${crest(f.home, hn, 'crest--lg')}<b>${esc(hn)}</b><span>—</span><b>${esc(an)}</b>${crest(f.away, an, 'crest--lg')}</div>
+      <p class="muted">${live ? 'Матч уже идёт.' : 'Матч ещё не сыгран.'}</p>
+      ${live && mine ? `<button class="btn btn--primary block" data-act="watch">${icon('play', '', 16)} Смотреть</button>` : ''}
+    </div>`);
   }
-  const sum = rd.summary || {};
+  const sum = f.summary || {};
   const st = sum.stats || {};
   const h = st.home || {}, a = st.away || {};
   const poss = st.poss || { home: 50, away: 50 };
@@ -307,16 +355,16 @@ export function matchSheet(ctx, idx) {
     ['Офсайды', h.offsides, a.offsides, h.offsides],
     ['Замены', h.subs, a.subs, h.subs],
   ];
-  return sheet(`Тур ${rd.round}`, `<div class="msheet">
+  return sheet(`Тур ${f.round}`, `<div class="msheet">
     <div class="ms__score">
-      <span>${crest(rd.home, hn, 'crest--lg')}<b>${esc(hn)}</b></span>
-      <em>${rd.hs} : ${rd.as}</em>
-      <span>${crest(rd.away, an, 'crest--lg')}<b>${esc(an)}</b></span>
+      <span>${crest(f.home, hn, 'crest--lg')}<b>${esc(hn)}</b></span>
+      <em>${f.hs} : ${f.as}</em>
+      <span>${crest(f.away, an, 'crest--lg')}<b>${esc(an)}</b></span>
     </div>
     ${sum.mvp ? `<div class="ms__mvp">${icon('trophy', '', 16)} Лучший игрок: <b>${esc(sum.mvp.player)}</b> · ${sum.mvp.rating}</div>` : ''}
     <h3>Голы</h3>
     ${(sum.scorers || []).length ? `<div class="ms__goals">${sum.scorers.map((g) => `<div class="ms__goal">
-        <span>${esc(g.min)}</span><b>${esc(g.player)}</b>${g.assist ? `<em>пас: ${esc(g.assist)}</em>` : ''}${crest(g.team, '', 'crest--xs')}</div>`).join('')}</div>`
+        <span>${esc(g.min)}</span><b>${esc(g.player)}</b>${g.assist ? `<em>пас: ${esc(g.assist)}</em>` : ''}${crest(g.team, nameOf(ctx, g.team), 'crest--xs')}</div>`).join('')}</div>`
       : '<p class="muted">Голов не было.</p>'}
     <h3>Статистика</h3>
     <div class="ms__stats">${rows.map(([label, hv, av, w]) => `<div class="msrow">
@@ -324,6 +372,31 @@ export function matchSheet(ctx, idx) {
         <span>${esc(label)}</span><div class="msrow__bar rev"><i style="width:${Math.round(((Number(av) || 0)) / Math.max(1, (Number(hv) || 0) + (Number(av) || 0)) * 100)}%"></i></div><b>${av ?? 0}</b>
       </div>`).join('')}</div>
     ${(sum.cards || []).length ? `<h3>Карточки</h3><div class="ms__cards">${sum.cards.map((c) => `<span class="ms__card ${c.kind}"><i></i>${esc(c.player)}${c.min ? ` <em>${esc(c.min)}</em>` : ''}</span>`).join('')}</div>` : ''}
+    <div class="actions"><button class="btn block" data-act="replay" data-id="${f.id}">${icon('play', '', 16)} Трансляция</button></div>
+  </div>`);
+}
+
+/** Повтор матча: сервер детерминированно пересчитывает события по сохранённому seed. */
+export function replaySheet(ctx, data) {
+  const hn = nameOf(ctx, data.home), an = nameOf(ctx, data.away);
+  const events = data.events || [];
+  return sheet(`Тур ${data.round} · Трансляция`, `<div class="msheet">
+    <div class="ms__score">
+      <span>${crest(data.home, hn, 'crest--lg')}<b>${esc(hn)}</b></span>
+      <em>${data.hs} : ${data.as}</em>
+      <span>${crest(data.away, an, 'crest--lg')}<b>${esc(an)}</b></span>
+    </div>
+    ${data.mvp ? `<div class="ms__mvp">${icon('trophy', '', 16)} Лучший игрок: <b>${esc(data.mvp.player)}</b> · ${data.mvp.rating}</div>` : ''}
+    <h3>Трансляция</h3>
+    <div class="replayfeed">${events.map((ev) => {
+      const side = ev.teamKey ? (ev.teamKey === data.home ? 'left' : 'right') : 'neutral';
+      return `<div class="ev ev--${ev.type} ev--${side}">
+        <span class="ev__min">${esc(ev.clock)}</span>
+        <span class="ev__ic">${icon(EVENT_ICON[ev.type] || 'spark', '', 18)}</span>
+        <p class="ev__txt">${esc(ev.text)}</p>
+        ${ev.type === 'goal' && ev.score ? `<span class="ev__sc">${ev.score.join(':')}</span>` : ''}
+      </div>`;
+    }).join('')}</div>
   </div>`);
 }
 

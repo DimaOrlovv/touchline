@@ -1,5 +1,5 @@
 import { api, settings } from './state/api.js';
-import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, styleSheet, crest } from './ui/screens.js';
+import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, replaySheet, styleSheet, crest } from './ui/screens.js';
 import { LiveView } from './ui/live.js';
 import { icon } from './ui/icons.js';
 import { esc, sheet } from './ui/dom.js';
@@ -58,7 +58,10 @@ function connect() {
       refresh();
     },
     match_end: (msg) => {
-      for (const fn of ctx.listeners.live) fn(null);
+      if (msg?.live && ctx.S) {
+        ctx.S.live = msg.live;
+        for (const fn of ctx.listeners.live) fn(msg.live);
+      }
       if (msg?.summary) toast(`${nameOf(msg.summary.home)} ${msg.summary.hs}:${msg.summary.as} ${nameOf(msg.summary.away)}`);
     },
     onError: () => { /* EventSource сам переподключается */ },
@@ -210,7 +213,7 @@ function accountSheet() {
   const body = `<div class="acctsheet">
     <div class="acctsheet__club">${crest(ctx.account, club?.name, 'crest--lg')}
       <div><b>${esc(club?.name || '')}</b><span>${esc(club?.coach || '')}</span></div></div>
-    <div class="rowline"><span>Туров сыграно</span><span>${ctx.S.rounds.filter((r) => r.played).length}/${ctx.S.rounds.length}</span></div>
+    <div class="rowline"><span>Туров сыграно</span><span>${ctx.S.rounds.filter((rd) => rd.matches.every((m) => m.played)).length}/${ctx.S.rounds.length}</span></div>
     <h3>Комментатор</h3>
     <label class="switch"><span>OpenRouter вместо локальных фраз</span><input type="checkbox" id="llmon" ${llm.on ? 'checked' : ''}><i></i></label>
     <div class="field"><label for="llk">API-ключ</label><input id="llk" type="password" spellcheck="false" placeholder="sk-or-…" value="${esc(llm.key || '')}"></div>
@@ -252,6 +255,13 @@ function wireLineup(view) {
     return true;
   };
 
+  const blockStart = (id) => {
+    const p = playerById(id);
+    if (ctx.S.injuries?.[id]) { toast(`${p?.name || 'Игрок'}: травма — в старт нельзя`); return true; }
+    if (ctx.S.suspensions?.[id]) { toast(`${p?.name || 'Игрок'}: дисквалификация — в старт нельзя`); return true; }
+    return false;
+  };
+
   const swap = (fromId, toId) => {
     const list = ctx.draftSlots;
     const fi = list.findIndex((x) => x.id === fromId);
@@ -265,10 +275,10 @@ function wireLineup(view) {
       list[fi].id = list[ti].id;
       list[ti].id = tmp;
     } else if (fi >= 0) {
-      if (!gkRule(tp, list[fi].pos)) return;
+      if (blockStart(toId) || !gkRule(tp, list[fi].pos)) return;
       list[fi] = { id: toId, pos: list[fi].pos };
     } else if (ti >= 0) {
-      if (!gkRule(fp, list[ti].pos)) return;
+      if (blockStart(fromId) || !gkRule(fp, list[ti].pos)) return;
       list[ti] = { id: fromId, pos: list[ti].pos };
     } else return;
     ctx.dirty = true;
@@ -397,12 +407,20 @@ const actions = {
     try {
       const r = await api.ready(ctx.S.roundIdx);
       if (r.error) return toast(r.error);
-      toast('Готов. Ждём второго тренера…');
+      toast(r.live?.status === 'running' ? 'Матч начался' : 'Готов. Ждём второго тренера…');
       applyState(await api.state());
       refresh();
     } catch (err) { toast(err.message); }
   },
-  match: (t) => openSheet(matchSheet(ctx, Number(t.dataset.idx))),
+  match: (t) => openSheet(matchSheet(ctx, t.dataset.id)),
+  async replay(t) {
+    const [round, ord] = String(t.dataset.id || '').split('-').map(Number);
+    if (!round || !ord) return;
+    try {
+      const data = await api.replay(round - 1, ord - 1);
+      openSheet(replaySheet(ctx, data));
+    } catch (err) { toast(err.message); }
+  },
   player: (t) => openSheet(playerSheet(ctx, t.dataset.id)),
   styles: () => openSheet(styleSheet(ctx)),
   async style(t) {
@@ -418,6 +436,11 @@ const actions = {
   club: (t) => { ctx.clubKey = t.dataset.key; ctx.draftSlots = ctx.S.lineups[t.dataset.key]?.slots?.map((s) => ({ ...s })) || null; ctx.dirty = false; go('squad'); refresh(); },
   async 'save-xi'() {
     if (!ctx.dirty) return;
+    const all = [...(ctx.S.squads[ctx.account]?.raw.starters || []), ...(ctx.S.squads[ctx.account]?.raw.bench || [])];
+    const bad = (ctx.draftSlots || [])
+      .map((s) => all.find((p) => p.id === s.id))
+      .find((p) => p && (ctx.S.injuries?.[p.id] || ctx.S.suspensions?.[p.id]));
+    if (bad) return toast(`${bad.name} недоступен: травма или дисквалификация`);
     try {
       await api.saveXi(ctx.draftSlots);
       ctx.dirty = false;
@@ -433,7 +456,7 @@ const actions = {
     await api.reset();
     applyState(await api.state());
     refresh();
-    toast('Новый сезон: 30 туров');
+    toast('Новый сезон: 18 туров, 10 клубов');
   },
   async logout() {
     const ok = await confirmDialog({ title: 'Выйти?', text: 'Данные сезона останутся на сервере.', ok: 'Выйти' });

@@ -96,7 +96,18 @@ export const STYLES = [
   },
 ];
 
-export const DEFAULT_STYLES = { arsenal: 'high_press', barcelona: 'possession', real_madrid: 'counter' };
+export const DEFAULT_STYLES = {
+  psg: 'high_press',
+  barcelona: 'possession',
+  real_madrid: 'counter',
+  arsenal: 'high_press',
+  manchester_city: 'possession',
+  bayern_munich: 'gegenpress',
+  liverpool: 'high_press',
+  chelsea: 'possession',
+  atletico_madrid: 'low_block',
+  inter_milan: 'counter',
+};
 
 export const styleOf = (id) => STYLES.find((s) => s.id === id) || STYLES[0];
 

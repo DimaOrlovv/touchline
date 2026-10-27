@@ -3,7 +3,7 @@ import { clamp } from './util.js';
 // Все три тренера строят игру на контроле мяча, высоком прессинге и быстрой контратаке.
 // Профиль задаёт только пропорции и привычки, а не сам набор принципов.
 export const COACHES = {
-  arsenal: {
+  psg: {
     name: 'Luis Enrique', team: 'PSG',
     press: 0.84, control: 0.86, counter: 0.66, tempo: 0.78, aggression: 0.60, lineHeight: 0.78,
     subWindow: 60, fatigueLimit: 53, secondWind: 6,
@@ -21,9 +21,51 @@ export const COACHES = {
     subWindow: 62, fatigueLimit: 57, secondWind: 7,
     note: 'Высокая линия и вертикаль в первую секунду после перехвата.',
   },
+  arsenal: {
+    name: 'Mikel Arteta', team: 'Arsenal',
+    press: 0.84, control: 0.82, counter: 0.64, tempo: 0.76, aggression: 0.62, lineHeight: 0.74,
+    subWindow: 60, fatigueLimit: 54, secondWind: 6,
+    note: 'Высокий прессинг, контроль через полуфланги и быстрый выход из-под давления.',
+  },
+  manchester_city: {
+    name: 'Pep Guardiola', team: 'Manchester City',
+    press: 0.82, control: 0.94, counter: 0.50, tempo: 0.66, aggression: 0.52, lineHeight: 0.82,
+    subWindow: 64, fatigueLimit: 50, secondWind: 5,
+    note: 'Максимальный контроль мяча и позиционные атаки, минимум риска.',
+  },
+  bayern_munich: {
+    name: 'Vincent Kompany', team: 'Bayern Munich',
+    press: 0.90, control: 0.78, counter: 0.78, tempo: 0.84, aggression: 0.68, lineHeight: 0.80,
+    subWindow: 60, fatigueLimit: 55, secondWind: 7,
+    note: 'Высокая линия, агрессивный прессинг и вертикальные передачи.',
+  },
+  liverpool: {
+    name: 'Arne Slot', team: 'Liverpool',
+    press: 0.87, control: 0.80, counter: 0.72, tempo: 0.82, aggression: 0.64, lineHeight: 0.78,
+    subWindow: 60, fatigueLimit: 55, secondWind: 7,
+    note: 'Быстрый переход в атаку и давление на чужой половине.',
+  },
+  chelsea: {
+    name: 'Enzo Maresca', team: 'Chelsea',
+    press: 0.78, control: 0.88, counter: 0.52, tempo: 0.70, aggression: 0.54, lineHeight: 0.72,
+    subWindow: 63, fatigueLimit: 53, secondWind: 6,
+    note: 'Владение и терпеливый розыгрыш с выходом через центр.',
+  },
+  atletico_madrid: {
+    name: 'Diego Simeone', team: 'Atlético Madrid',
+    press: 0.70, control: 0.58, counter: 0.90, tempo: 0.62, aggression: 0.78, lineHeight: 0.52,
+    subWindow: 58, fatigueLimit: 52, secondWind: 5,
+    note: 'Низкий компактный блок и мгновенные контратаки.',
+  },
+  inter_milan: {
+    name: 'Simone Inzaghi', team: 'Inter Milan',
+    press: 0.76, control: 0.80, counter: 0.82, tempo: 0.74, aggression: 0.62, lineHeight: 0.68,
+    subWindow: 62, fatigueLimit: 54, secondWind: 6,
+    note: 'Гибкая схема, быстрые вертикали и игра через фланги.',
+  },
 };
 
-export const coachOf = (teamKey) => COACHES[teamKey] || COACHES.arsenal;
+export const coachOf = (teamKey) => COACHES[teamKey] || COACHES.psg;
 
 // Как тренер меняет характер игры по счёту.
 export function matchMood(coach, diff, minute) {
@@ -143,12 +185,21 @@ export function nextSubstitution(sim, teamKey, { halftime = false } = {}) {
 
 function effOf(sim, p) { return sim.eff(p, 'overall'); }
 
-function pickBench(sim, teamKey, outPlayer, opts = {}) {
+export function pickBench(sim, teamKey, outPlayer, opts = {}) {
   const order = BENCH_PRIORITY[outPlayer.pos] || [outPlayer.pos];
   const pool = sim.benchFor(teamKey).filter((p) => !p.used && (opts.ignoreFatigue || p.fatigue < 45));
   for (const role of order) {
     const cand = pool.filter((p) => p.pos === role).sort((a, b) => b.overall - a.overall)[0];
     if (cand) return cand;
   }
-  return pool.sort((a, b) => b.overall - a.overall)[0] || null;
+  // Вратаря меняем только вратарём; если его нет — в рамку встаёт защитник.
+  if (outPlayer.pos === 'GK') {
+    const def = pool.filter((p) => ['CB', 'LB', 'RB', 'CDM'].includes(p.pos))
+      .sort((a, b) => (b.power_strength || 0) - (a.power_strength || 0))[0];
+    if (def) return def;
+  }
+  // Затем — ближайшая линия, и только потом любой свежий игрок.
+  const group = groupOf(outPlayer.pos);
+  const sameLine = pool.filter((p) => groupOf(p.pos) === group).sort((a, b) => b.overall - a.overall)[0];
+  return sameLine || pool.sort((a, b) => b.overall - a.overall)[0] || null;
 }

@@ -41,6 +41,7 @@ export const api = {
 
   state: () => req('/state'),
   ready: (roundIdx) => req('/ready', { method: 'POST', body: { roundIdx } }),
+  replay: (r, m) => req(`/replay?r=${r}&m=${m}`),
   saveXi: (slots) => req('/xi', { method: 'POST', body: { slots } }),
   setStyle: (styleId) => req('/style', { method: 'POST', body: { styleId } }),
   reset: () => req('/reset', { method: 'POST' }),

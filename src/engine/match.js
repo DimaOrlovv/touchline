@@ -1,5 +1,5 @@
 import { Rng, clamp, fmtClock } from './util.js';
-import { coachOf, matchMood, nextSubstitution, groupOf } from './coach.js';
+import { coachOf, matchMood, nextSubstitution, groupOf, pickBench } from './coach.js';
 import { applyStyle } from './styles.js';
 import { line, CARD_REASONS, RED_REASONS } from './text.js';
 
@@ -209,9 +209,11 @@ export class MatchSim {
   }
 
   forcedSub(t, p) {
-    const inP = this.benchFor(t.key).sort((a, b) => b.overall - a.overall)[0];
-    if (!inP || t.subsUsed >= 5) return null;
-    return { out: p, in: inP, forced: true, reason: p.injuryLabel || 'травма' };
+    if (t.subsUsed >= 5) return null;
+    const inP = pickBench(this, t.key, p, { ignoreFatigue: true });
+    if (!inP) return null;
+    const emergencyGK = p.pos === 'GK' && inP.pos !== 'GK';
+    return { out: p, in: inP, forced: true, emergencyGK, reason: p.injuryLabel || 'травма' };
   }
 
   applySub(t, d) {
@@ -221,11 +223,15 @@ export class MatchSim {
     d.in.onPitch = true;
     d.in.cameOn = true;
     d.in.fatigue = 4;
+    // Запасного вратаря нет — в рамку встаёт защитник, иначе движок не увидит вратаря.
+    if (d.emergencyGK) d.in.pos = 'GK';
     const idx = t.xi.indexOf(d.out);
     if (idx >= 0) t.xi[idx] = d.in; else t.xi.push(d.in);
     t.subsUsed += 1;
     this.push('sub', t, {
-      text: line(this.rng, 'sub', d.out.name, d.in.name, d.reason),
+      text: d.emergencyGK
+        ? `${d.in.name} встаёт в рамку вместо ${d.out.name}.`
+        : line(this.rng, 'sub', d.out.name, d.in.name, d.reason),
       dur: 0.5, out: d.out.name, in: d.in.name, reason: d.reason, forced: !!d.forced, number: t.subsUsed,
     });
   }
