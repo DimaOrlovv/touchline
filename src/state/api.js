@@ -40,8 +40,10 @@ export const api = {
   },
 
   state: () => req('/state'),
-  ready: (roundIdx) => req('/ready', { method: 'POST', body: { roundIdx } }),
+  ready: (roundIdx, matchId) => req('/ready', { method: 'POST', body: { roundIdx, matchId } }),
   replay: (r, m) => req(`/replay?r=${r}&m=${m}`),
+  cupReplay: (id) => req(`/cup/replay?id=${encodeURIComponent(id)}`),
+  newSeason: () => req('/newseason', { method: 'POST' }),
   saveXi: (slots) => req('/xi', { method: 'POST', body: { slots } }),
   setStyle: (styleId) => req('/style', { method: 'POST', body: { styleId } }),
   reset: () => req('/reset', { method: 'POST' }),

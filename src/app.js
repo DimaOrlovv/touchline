@@ -1,5 +1,5 @@
 import { api, settings } from './state/api.js';
-import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, replaySheet, styleSheet, crest } from './ui/screens.js';
+import { renderLogin, renderHome, renderSquad, renderTable, renderCalendar, playerSheet, matchSheet, replaySheet, cupSheet, cupMatchSheet, findFixture, styleSheet, crest } from './ui/screens.js';
 import { LiveView } from './ui/live.js';
 import { icon } from './ui/icons.js';
 import { esc, sheet } from './ui/dom.js';
@@ -16,6 +16,7 @@ const ROUTE_MIN = 130;
 const app = document.getElementById('app');
 const ctx = {
   S: null, account: null, clubKey: null, draftSlots: null, dirty: false, busy: false,
+  tableViewKey: null, calendarViewKey: null,
   remember: !!localStorage.getItem('touchline.token'),
   listeners: { event: new Set(), live: new Set() },
   onEvent(fn) { this.listeners.event.add(fn); return () => this.listeners.event.delete(fn); },
@@ -69,11 +70,16 @@ function connect() {
 }
 
 function applyState(S) {
+  const prev = ctx.S;
   ctx.S = S;
+  if (prev && !S.squads) ctx.S.squads = prev.squads;
+  if (prev && !S.lineups) ctx.S.lineups = prev.lineups;
   ctx.account = S.account;
-  if (!ctx.clubKey || !S.squads[ctx.clubKey]) ctx.clubKey = S.account;
+  if (!ctx.clubKey || !S.squads?.[ctx.clubKey]) ctx.clubKey = S.account;
+  if (!ctx.tableViewKey) ctx.tableViewKey = S.divisionKey;
+  if (!ctx.calendarViewKey) ctx.calendarViewKey = S.divisionKey;
   // черновик держим до сохранения: серверные обновления не должны его затирать
-  if (!ctx.draftSlots) ctx.draftSlots = S.lineups[S.account]?.slots?.map((s) => ({ ...s })) || null;
+  if (!ctx.draftSlots) ctx.draftSlots = S.lineups?.[S.account]?.slots?.map((s) => ({ ...s })) || null;
 }
 
 function mountCurrent() {
@@ -213,7 +219,13 @@ function accountSheet() {
   const body = `<div class="acctsheet">
     <div class="acctsheet__club">${crest(ctx.account, club?.name, 'crest--lg')}
       <div><b>${esc(club?.name || '')}</b><span>${esc(club?.coach || '')}</span></div></div>
+    <div class="rowline"><span>Сезон</span><span>${ctx.S.season} · ${esc(ctx.S.divisionName || '')}</span></div>
     <div class="rowline"><span>Туров сыграно</span><span>${ctx.S.rounds.filter((rd) => rd.matches.every((m) => m.played)).length}/${ctx.S.rounds.length}</span></div>
+    <h3>Турниры</h3>
+    <div class="actions">
+      <button class="btn" data-act="go" data-route="table">Лига</button>
+      <button class="btn" data-act="cup">${icon('trophy', '', 16)} Кубок Чемпионов</button>
+    </div>
     <h3>Комментатор</h3>
     <label class="switch"><span>OpenRouter вместо локальных фраз</span><input type="checkbox" id="llmon" ${llm.on ? 'checked' : ''}><i></i></label>
     <div class="field"><label for="llk">API-ключ</label><input id="llk" type="password" spellcheck="false" placeholder="sk-or-…" value="${esc(llm.key || '')}"></div>
@@ -399,14 +411,42 @@ function wireView(view) {
 
 // ---------- действия ----------
 const actions = {
-  go: (t) => go(t.dataset.route),
+  go: (t) => { closeSheet(); go(t.dataset.route); },
+  division: (t) => {
+    const key = t.dataset.key;
+    if (route === 'calendar') ctx.calendarViewKey = key;
+    else ctx.tableViewKey = key;
+    refresh();
+  },
   account: () => accountSheet(),
+  cup: () => openSheet(cupSheet(ctx)),
+  'cup-match': (t) => openSheet(cupMatchSheet(ctx, t.dataset.id)),
+  async 'cup-replay'(t) {
+    try {
+      const data = await api.cupReplay(t.dataset.id);
+      openSheet(replaySheet(ctx, data));
+    } catch (err) { toast(err.message); }
+  },
+  async newseason() {
+    const prevDiv = ctx.S.divisionKey;
+    try {
+      const r = await api.newSeason();
+      ctx.tableViewKey = r.divisionKey;
+      ctx.calendarViewKey = r.divisionKey;
+      applyState(await api.state());
+      refresh();
+      if (r.divisionKey !== prevDiv) {
+        toast(r.divisionKey === 'd1' ? 'Вы вышли в Высшую лигу!' : 'Вы вылетели в Первую лигу');
+      } else toast(`Новый сезон ${r.season}`);
+    } catch (err) { toast(err.message); }
+  },
   watch: () => openLive(),
   'leave-live': () => { live?.destroy(); live = null; route = 'live'; go('home'); },
   async ready(t) {
     try {
-      const r = await api.ready(ctx.S.roundIdx);
+      const r = await api.ready(ctx.S.roundIdx, t.dataset.id);
       if (r.error) return toast(r.error);
+      closeSheet();
       toast(r.live?.status === 'running' ? 'Матч начался' : 'Готов. Ждём второго тренера…');
       applyState(await api.state());
       refresh();
@@ -414,10 +454,10 @@ const actions = {
   },
   match: (t) => openSheet(matchSheet(ctx, t.dataset.id)),
   async replay(t) {
-    const [round, ord] = String(t.dataset.id || '').split('-').map(Number);
-    if (!round || !ord) return;
+    const f = findFixture(ctx.S, t.dataset.id);
+    if (!f) return;
     try {
-      const data = await api.replay(round - 1, ord - 1);
+      const data = await api.replay(f.rIdx, f.mIdx);
       openSheet(replaySheet(ctx, data));
     } catch (err) { toast(err.message); }
   },
@@ -450,13 +490,16 @@ const actions = {
     } catch (err) { toast(err.message); }
   },
   async reset() {
-    const ok = await confirmDialog({ title: 'Сбросить сезон?', text: 'Турнирная таблица, статистика игроков и составы обнулятся.', ok: 'Сбросить', danger: true });
+    const ok = await confirmDialog({ title: 'Сбросить всё?', text: 'Оба дивизиона, Кубок, статистика и составы начнутся заново с сезона 1.', ok: 'Сбросить', danger: true });
     if (!ok) return;
     closeSheet();
     await api.reset();
-    applyState(await api.state());
+    const S = await api.state();
+    ctx.tableViewKey = S.divisionKey;
+    ctx.calendarViewKey = S.divisionKey;
+    applyState(S);
     refresh();
-    toast('Новый сезон: 18 туров, 10 клубов');
+    toast('Сброс: сезон 1, два дивизиона');
   },
   async logout() {
     const ok = await confirmDialog({ title: 'Выйти?', text: 'Данные сезона останутся на сервере.', ok: 'Выйти' });

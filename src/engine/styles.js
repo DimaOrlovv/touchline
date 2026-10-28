@@ -107,6 +107,16 @@ export const DEFAULT_STYLES = {
   chelsea: 'possession',
   atletico_madrid: 'low_block',
   inter_milan: 'counter',
+  napoli: 'counter',
+  juventus: 'balanced',
+  borussia_dortmund: 'gegenpress',
+  bayer_leverkusen: 'high_press',
+  ac_milan: 'counter',
+  roma: 'high_press',
+  sevilla: 'low_block',
+  villarreal: 'possession',
+  newcastle: 'high_press',
+  aston_villa: 'counter',
 };
 
 export const styleOf = (id) => STYLES.find((s) => s.id === id) || STYLES[0];

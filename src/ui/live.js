@@ -117,6 +117,7 @@ export class LiveView {
       return;
     }
     if (l.score) this.el('score').textContent = `${l.score[0]}:${l.score[1]}`;
+    const comp = l.comp === 'cup' ? 'Кубок · ' : '';
 
     const styles = l.styles || this.ctx.S.styles || {};
     this.el('style-home').textContent = styles[l.home] ? `Стиль: ${styleOf(styles[l.home]).name}` : '';
@@ -125,7 +126,7 @@ export class LiveView {
     if (l.status === 'halftime') {
       wait.hidden = true;
       this.el('ht').hidden = false;
-      this.el('state').textContent = 'перерыв';
+      this.el('state').textContent = `${comp}перерыв`;
       this.renderHalftime(l, styles);
       this.startBreakClock(l);
       return;
@@ -135,16 +136,16 @@ export class LiveView {
 
     if (l.status === 'running') {
       wait.hidden = true;
-      this.el('state').textContent = l.half === 2 ? 'второй тайм' : 'первый тайм';
+      this.el('state').textContent = `${comp}${l.half === 2 ? 'второй тайм' : 'первый тайм'}`;
       return;
     }
     if (l.status === 'done') {
       wait.hidden = true;
-      this.el('state').textContent = 'матч окончен';
+      this.el('state').textContent = `${comp}матч окончен`;
       return;
     }
     const missing = [l.home, l.away].filter((k) => !l.ready?.[k]);
-    this.el('state').textContent = 'ожидание старта';
+    this.el('state').textContent = `${comp}ожидание старта`;
     wait.hidden = false;
     this.el('waittext').textContent = missing.length
       ? `Ждём: ${missing.map((k) => this.name(k)).join(', ')}`

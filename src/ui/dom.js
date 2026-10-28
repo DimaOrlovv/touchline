@@ -21,6 +21,9 @@ export const teamTone = (key) => ({
   psg: 'psg', barcelona: 'fcb', real_madrid: 'rma', arsenal: 'ars',
   manchester_city: 'mci', bayern_munich: 'bay', liverpool: 'liv',
   chelsea: 'che', atletico_madrid: 'atm', inter_milan: 'int',
+  napoli: 'nap', juventus: 'juv', borussia_dortmund: 'bvb', bayer_leverkusen: 'b04',
+  ac_milan: 'acm', roma: 'rom', sevilla: 'sev', villarreal: 'vil',
+  newcastle: 'new', aston_villa: 'avl',
 }[key] || 'psg');
 
 export function bar(value, { max = 100, tone = '' } = {}) {

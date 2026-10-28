@@ -1,9 +1,19 @@
 import { groupOf } from './coach.js';
+import { Rng } from './util.js';
 
-export const TEAMS_ORDER = [
-  'psg', 'barcelona', 'real_madrid', 'arsenal', 'manchester_city',
-  'bayern_munich', 'liverpool', 'chelsea', 'atletico_madrid', 'inter_milan',
+export const DIVISIONS = [
+  {
+    key: 'd1', name: 'Высшая лига',
+    teams: ['psg', 'barcelona', 'real_madrid', 'arsenal', 'manchester_city',
+      'bayern_munich', 'liverpool', 'chelsea', 'atletico_madrid', 'inter_milan'],
+  },
+  {
+    key: 'd2', name: 'Первая лига',
+    teams: ['napoli', 'juventus', 'borussia_dortmund', 'bayer_leverkusen', 'ac_milan',
+      'roma', 'sevilla', 'villarreal', 'newcastle', 'aston_villa'],
+  },
 ];
+export const TEAMS_ORDER = DIVISIONS.flatMap((d) => d.teams);
 export const HUMAN_KEYS = ['psg', 'barcelona', 'real_madrid'];
 
 function singleRoundRobin(keys) {
@@ -46,14 +56,143 @@ export function buildSchedule(keys = TEAMS_ORDER, rounds = 18) {
   return out;
 }
 
-export function newLeague(keys = TEAMS_ORDER, rounds = 18, seed = Date.now() % 100000) {
+export function buildLeagueRounds(divisions, rounds = 18) {
+  const schedules = divisions.map((d) => ({ div: d.key, rounds: buildSchedule(d.teams, rounds) }));
+  return Array.from({ length: rounds }, (_, ri) => ({
+    round: ri + 1,
+    matches: schedules.flatMap((s) => s.rounds[ri].matches.map((m, mi) => ({
+      id: `${s.div}-${ri + 1}-${mi + 1}`,
+      div: s.div, home: m.home, away: m.away,
+      played: false, hs: null, as: null, seed: null, snapshot: null,
+    }))),
+  }));
+}
+
+export function newLeague(divisions = DIVISIONS, rounds = 18, seed = Date.now() % 100000, season = 1) {
+  const divs = divisions.map((d) => ({ key: d.key, name: d.name, teams: [...d.teams] }));
   return {
-    keys, rounds: buildSchedule(keys, rounds), seed,
-    players: {}, injuries: {}, suspensions: {}, feedLog: [],
+    season, divisions: divs,
+    rounds: buildLeagueRounds(divs, rounds), seed,
+    players: {}, injuries: {}, suspensions: {}, cup: newCup(divs, seed, season), feedLog: [],
   };
 }
 
 export const roundComplete = (rd) => rd.matches.every((m) => m.played);
+
+export function divisionOf(league, key) {
+  return league.divisions.find((d) => d.teams.includes(key)) || null;
+}
+
+export function divisionName(league, teamKey) {
+  return divisionOf(league, teamKey)?.name || '';
+}
+
+/* ---------------- Кубок Чемпионов ---------------- */
+
+function groupRobin(teams) {
+  const arr = [...teams, null];
+  const n = arr.length;
+  const rounds = [];
+  for (let r = 0; r < n - 1; r++) {
+    const pairs = [];
+    for (let i = 0; i < n / 2; i++) {
+      let a = arr[i], b = arr[n - 1 - i];
+      if (a && b) {
+        if ((r + i) % 2 === 1) [a, b] = [b, a];
+        pairs.push([a, b]);
+      }
+    }
+    rounds.push(pairs);
+    arr.splice(1, 0, arr.pop());
+  }
+  return rounds;
+}
+
+export function newCup(divisions, seed, season = 1) {
+  const teams = divisions.flatMap((d) => d.teams);
+  const rng = new Rng(seed + season * 7717);
+  const shuffled = rng.shuffle(teams);
+  const schedule = { groupAt: [3, 6, 9, 12, 15], qfAt: 16, sfAt: 17, finalAt: 18 };
+  const groups = [];
+  for (let g = 0; g < 4; g++) {
+    const gt = shuffled.slice(g * 5, (g + 1) * 5);
+    const matches = [];
+    groupRobin(gt).forEach((pairs, ri) => {
+      pairs.forEach(([home, away], mi) => {
+        matches.push({
+          id: `cup-g${g + 1}-${ri + 1}-${mi + 1}`,
+          stage: 'group', group: String.fromCharCode(65 + g), round: ri + 1,
+          dueRound: schedule.groupAt[ri],
+          home, away, played: false, hs: null, as: null, pens: null, seed: null, snapshot: null,
+        });
+      });
+    });
+    groups.push({ key: String.fromCharCode(65 + g), teams: gt, matches });
+  }
+  return {
+    name: 'Кубок Чемпионов', stage: 'groups', groups,
+    knockout: { qf: [], sf: [], final: [] }, winner: null, schedule,
+  };
+}
+
+export const cupDueRound = (cup, m) => {
+  if (m.dueRound) return m.dueRound;
+  if (m.stage === 'group') return cup.schedule.groupAt[(m.round || 1) - 1];
+  if (m.stage === 'qf') return cup.schedule.qfAt;
+  if (m.stage === 'sf') return cup.schedule.sfAt;
+  return cup.schedule.finalAt;
+};
+
+export const cupDueMatches = (cup, round) =>
+  cupMatches(cup).filter((m) => cupDueRound(cup, m) === round);
+
+export function cupGroupTable(group, squads) {
+  const rows = group.teams.map((k) => ({
+    key: k, name: squads[k]?.name || k, played: 0, w: 0, d: 0, l: 0,
+    gf: 0, ga: 0, gd: 0, pts: 0,
+  }));
+  const by = Object.fromEntries(rows.map((r) => [r.key, r]));
+  for (const m of group.matches) {
+    if (!m.played) continue;
+    const h = by[m.home], a = by[m.away];
+    if (!h || !a) continue;
+    h.played++; a.played++;
+    h.gf += m.hs; h.ga += m.as; a.gf += m.as; a.ga += m.hs;
+    if (m.hs > m.as) { h.w++; a.l++; h.pts += 3; }
+    else if (m.hs < m.as) { a.w++; h.l++; a.pts += 3; }
+    else { h.d++; a.d++; h.pts++; a.pts++; }
+  }
+  for (const r of rows) r.gd = r.gf - r.ga;
+  rows.sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gf - x.gf || x.name.localeCompare(y.name));
+  return rows;
+}
+
+export function cupMatches(cup) {
+  return [
+    ...cup.groups.flatMap((g) => g.matches),
+    ...cup.knockout.qf, ...cup.knockout.sf, ...cup.knockout.final,
+  ];
+}
+
+export function cupFindMatch(cup, id) {
+  return cupMatches(cup).find((m) => m.id === id) || null;
+}
+
+/** Новый сезон: 2 вниз / 2 вверх, составы и стили остаются у сервера. */
+export function newSeason(league, squads) {
+  const d1 = league.divisions.find((d) => d.key === 'd1');
+  const d2 = league.divisions.find((d) => d.key === 'd2');
+  const t1 = standings(league, squads, 'd1');
+  const t2 = standings(league, squads, 'd2');
+  const relegated = t1.slice(-2).map((r) => r.key);
+  const promoted = t2.slice(0, 2).map((r) => r.key);
+  const divs = [
+    { key: 'd1', name: d1.name, teams: d1.teams.filter((k) => !relegated.includes(k)).concat(promoted) },
+    { key: 'd2', name: d2.name, teams: d2.teams.filter((k) => !promoted.includes(k)).concat(relegated) },
+  ];
+  const next = newLeague(divs, 18, (league.seed * 37 + Date.now()) % 100000, (league.season || 1) + 1);
+  return { league: next, promoted, relegated };
+}
 
 const blank = () => ({
   apps: 0, starts: 0, goals: 0, assists: 0, mins: 0, yellow: 0, red: 0, fouls: 0,
@@ -81,15 +220,17 @@ export function avgRating(league, id) {
   return s.ratingN ? Math.round((s.ratingSum / s.ratingN) * 100) / 100 : null;
 }
 
-export function standings(league, squads) {
-  const rows = league.keys.map((k) => ({
-    key: k, name: squads[k].name, coach: squads[k].coach, played: 0, w: 0, d: 0, l: 0,
+export function standings(league, squads, divKey = 'd1') {
+  const div = league.divisions?.find((d) => d.key === divKey);
+  const rowKeys = div ? div.teams : TEAMS_ORDER;
+  const rows = rowKeys.map((k) => ({
+    key: k, name: squads[k]?.name || k, coach: squads[k]?.coach || '', played: 0, w: 0, d: 0, l: 0,
     gf: 0, ga: 0, pts: 0, form: [], gd: 0,
   }));
   const byKey = Object.fromEntries(rows.map((r) => [r.key, r]));
   for (const rd of league.rounds) {
     for (const m of rd.matches) {
-      if (!m.played) continue;
+      if (!m.played || m.div !== divKey) continue;
       const h = byKey[m.home], a = byKey[m.away];
       h.played++; a.played++;
       h.gf += m.hs; h.ga += m.as; a.gf += m.as; a.ga += m.hs;
@@ -234,7 +375,7 @@ export function applyResult(league, roundIdx, matchIdx, sim, squads = null) {
   return m;
 }
 
-function teamLine(t) {
+export function teamLine(t) {
   return {
     shots: t.shots, sot: t.sot, corners: t.corners, fouls: t.fouls,
     offsides: t.offsides, yellow: t.yellows, red: t.reds, saves: t.saves, subs: t.subsUsed, presses: t.presses,

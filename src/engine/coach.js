@@ -63,6 +63,66 @@ export const COACHES = {
     subWindow: 62, fatigueLimit: 54, secondWind: 6,
     note: 'Гибкая схема, быстрые вертикали и игра через фланги.',
   },
+  napoli: {
+    name: 'Antonio Conte', team: 'Napoli',
+    press: 0.80, control: 0.72, counter: 0.78, tempo: 0.74, aggression: 0.70, lineHeight: 0.70,
+    subWindow: 58, fatigueLimit: 54, secondWind: 6,
+    note: 'Плотная оборона и быстрый выход через фланги.',
+  },
+  juventus: {
+    name: 'Igor Tudor', team: 'Juventus',
+    press: 0.78, control: 0.70, counter: 0.80, tempo: 0.72, aggression: 0.72, lineHeight: 0.68,
+    subWindow: 58, fatigueLimit: 53, secondWind: 5,
+    note: 'Оборона в три центральных и вертикальные контратаки.',
+  },
+  borussia_dortmund: {
+    name: 'Niko Kovač', team: 'Borussia Dortmund',
+    press: 0.86, control: 0.72, counter: 0.82, tempo: 0.82, aggression: 0.70, lineHeight: 0.78,
+    subWindow: 60, fatigueLimit: 55, secondWind: 7,
+    note: 'Высокий темп и давление на чужой половине.',
+  },
+  bayer_leverkusen: {
+    name: 'Kasper Hjulmand', team: 'Bayer Leverkusen',
+    press: 0.84, control: 0.80, counter: 0.74, tempo: 0.80, aggression: 0.64, lineHeight: 0.76,
+    subWindow: 62, fatigueLimit: 54, secondWind: 6,
+    note: 'Контроль через тройку защитников и быстрые включения.',
+  },
+  ac_milan: {
+    name: 'Massimiliano Allegri', team: 'AC Milan',
+    press: 0.74, control: 0.72, counter: 0.80, tempo: 0.68, aggression: 0.66, lineHeight: 0.64,
+    subWindow: 60, fatigueLimit: 52, secondWind: 5,
+    note: 'Прагматичный футбол и ставка на моменты.',
+  },
+  roma: {
+    name: 'Gian Piero Gasperini', team: 'Roma',
+    press: 0.88, control: 0.76, counter: 0.76, tempo: 0.82, aggression: 0.72, lineHeight: 0.80,
+    subWindow: 60, fatigueLimit: 55, secondWind: 7,
+    note: 'Агрессивный прессинг и игра в высоком темпе.',
+  },
+  sevilla: {
+    name: 'Matías Almeyda', team: 'Sevilla',
+    press: 0.72, control: 0.66, counter: 0.78, tempo: 0.66, aggression: 0.74, lineHeight: 0.60,
+    subWindow: 58, fatigueLimit: 52, secondWind: 5,
+    note: 'Низкий блок и борьба за второй мяч.',
+  },
+  villarreal: {
+    name: 'Marcelino', team: 'Villarreal',
+    press: 0.74, control: 0.80, counter: 0.60, tempo: 0.68, aggression: 0.58, lineHeight: 0.72,
+    subWindow: 62, fatigueLimit: 52, secondWind: 5,
+    note: 'Контроль мяча и терпеливое позиционное нападение.',
+  },
+  newcastle: {
+    name: 'Eddie Howe', team: 'Newcastle United',
+    press: 0.84, control: 0.74, counter: 0.76, tempo: 0.80, aggression: 0.66, lineHeight: 0.74,
+    subWindow: 60, fatigueLimit: 55, secondWind: 7,
+    note: 'Интенсивный прессинг и быстрые атаки по флангам.',
+  },
+  aston_villa: {
+    name: 'Unai Emery', team: 'Aston Villa',
+    press: 0.78, control: 0.78, counter: 0.74, tempo: 0.72, aggression: 0.62, lineHeight: 0.70,
+    subWindow: 62, fatigueLimit: 53, secondWind: 6,
+    note: 'Структурный контроль и острые переходы.',
+  },
 };
 
 export const coachOf = (teamKey) => COACHES[teamKey] || COACHES.psg;
